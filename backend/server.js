@@ -1,30 +1,31 @@
-import express from 'express'
-import sql from './db.js'
-const app = express()
-app.use(express.json())
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
 
-app.post('/test-invoice', async (req, res) => {
-  try {
-    const invoice = await sql`
-      INSERT INTO invoices (ship_to, bill_no, terms_of_payment, state, grand_total)
-      VALUES ('Test Customer', 'BILL001', 'Net 30', 'Karnataka', 1000)
-      RETURNING *
-    `
-    res.json({ message: 'Invoice created', invoice: invoice[0] })
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
-})
+// Import routes
+import invoiceRoutes from "./routes/invoices.js";
+import itemRoutes from "./routes/items.js";
 
-app.get('/test-invoice/:id', async (req, res) => {
-  try {
-    const invoice = await sql`
-      SELECT * FROM invoices WHERE id = ${req.params.id}
-    `
-    res.json({ invoice: invoice[0] })
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
-})
+dotenv.config();
 
-app.listen(5000, () => console.log('Server running on port 5000'))
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// --- Middleware ---
+app.use(cors()); // Enable CORS for all origins
+app.use(express.json()); // Parse JSON bodies
+
+// --- Routes ---
+app.use("/api/invoices", invoiceRoutes);
+app.use("/api/items", itemRoutes);
+
+// --- Default route ---
+app.get("/", (req, res) => {
+  res.send("Invoice API running...");
+});
+
+// --- Start server ---
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
