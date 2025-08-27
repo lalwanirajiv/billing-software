@@ -24,12 +24,60 @@ export default function Invoice() {
 
   // --- Handle Save Button ---
   // This function shows a confirmation message.
-  const handleSave = () => {
-    setSaveMessage("Invoice Saved Successfully!");
-    setTimeout(() => {
-      setSaveMessage("");
-    }, 3000); // Message disappears after 3 seconds
+  const handleSave = async () => {
+    if (!invoiceData) return;
+  
+    // --- Validation ---
+    if (!invoiceData.shipTo || invoiceData.shipTo.trim() === "") {
+      setSaveMessage("Ship To cannot be empty!");
+      setTimeout(() => setSaveMessage(""), 3000);
+      return;
+    }
+  
+    try {
+      // Map frontend keys to backend expected keys
+      const payload = {
+        ship_to: invoiceData.shipTo,
+        bill_no: invoiceData.billNo,
+        date: invoiceData.date,
+        terms_of_payment: invoiceData.terms,
+        state: invoiceData.state,
+        grand_total: invoiceData.totalAmount,
+        items: invoiceData.items.map((item) => ({
+          item_name: item.name,
+          quantity: item.qty,
+          price: item.rate,
+          total: item.amount,
+        })),
+      };
+  
+      const response = await fetch("http://localhost:5000/api/invoices", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+  
+      const result = await response.json();
+  
+      if (response.ok) {
+        setSaveMessage("Invoice Saved Successfully!");
+        console.log("Saved Invoice ID:", result.invoiceId);
+        // Optionally clear localStorage after saving
+        // localStorage.removeItem("invoiceData");
+      } else {
+        setSaveMessage("Failed to save invoice: " + result.error);
+      }
+  
+      setTimeout(() => setSaveMessage(""), 3000);
+    } catch (err) {
+      console.error(err);
+      setSaveMessage("Error saving invoice: " + err.message);
+      setTimeout(() => setSaveMessage(""), 3000);
+    }
   };
+  
 
   if (!invoiceData) {
     return (
