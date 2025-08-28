@@ -1,10 +1,11 @@
-import sql from '../db.js';
+import sql from "../db.js";
 
 // --- Get items by invoice ID ---
 export const getItemsByInvoiceId = async (req, res) => {
   try {
     const { invoiceId } = req.params;
-    const items = await sql`SELECT * FROM items WHERE invoice_id = ${invoiceId}`;
+    const items =
+      await sql`SELECT * FROM items WHERE invoice_id = ${invoiceId}`;
     res.json(items);
   } catch (err) {
     console.error(err);
@@ -17,7 +18,8 @@ export const createItem = async (req, res) => {
   try {
     const { invoice_id, item_name, quantity, price, total } = req.body;
 
-    if (!invoice_id) return res.status(400).json({ error: "Invoice ID is required" });
+    if (!invoice_id)
+      return res.status(400).json({ error: "Invoice ID is required" });
 
     const [item] = await sql`
       INSERT INTO items
