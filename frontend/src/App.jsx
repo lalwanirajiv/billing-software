@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
-import Home from "./pages/Home";
-import Invoice from "./pages/Invoice";
-import InvoiceForm from "./pages/InvoiceForm";
+import Home from "./components/Home";
+import Invoice from "./components/Invoice/Invoice"; 
+import InvoiceForm from "./components/Invoice Form/InvoiceForm";
 
 
 function App() {
