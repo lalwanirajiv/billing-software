@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import Home from "./components/Home";
 import Invoice from "./components/Invoice/Invoice"; 
 import InvoiceForm from "./components/Invoice Form/InvoiceForm";
+import CustomerForm from "./components/Customer/CustomerForm";
 
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/invoice" element={<Invoice />} />
         <Route path="/invoice-form" element={<InvoiceForm />} />
+        <Route path="/create-customer" element={<CustomerForm />} />
       </Routes>
     </Router>
   );
