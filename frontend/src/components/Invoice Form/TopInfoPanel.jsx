@@ -1,26 +1,110 @@
 import React from "react";
 
-const TopInfoPanel = ({ formData, handleChange, totals }) => (
+const TopInfoPanel = ({
+  formData,
+  handleChange,
+  totals,
+  customers,
+  handleSuggestionClick,
+  isSuggestionsVisible,
+  setIsSuggestionsVisible,
+  isLoadingCustomers,
+  filteredCustomers,
+}) => (
   <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+    {/* Customer Details */}
     <div className="bg-gray-50 dark:bg-gray-800/50 p-5 rounded-lg border dark:border-gray-700 space-y-4">
       <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
         Customer Details
       </h2>
       <div>
         <label
-          htmlFor="shipTo"
+          htmlFor="customer-search"
           className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
         >
           Customer Name
         </label>
+        <div className="relative">
+          <input
+            id="customer-search"
+            type="text"
+            name="shipTo"
+            value={formData.shipTo}
+            onChange={handleChange}
+            onFocus={() => setIsSuggestionsVisible(true)}
+            onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 150)}
+            className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+            disabled={isLoadingCustomers}
+            autoComplete="off"
+            placeholder={
+              isLoadingCustomers ? "Loading customers..." : "Type to search..."
+            }
+          />
+          {isSuggestionsVisible && (
+            <ul className="absolute z-10 w-full bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+              {filteredCustomers.length > 0 ? (
+                filteredCustomers.map((customer) => (
+                  <li
+                    key={customer.id}
+                    onMouseDown={() => handleSuggestionClick(customer)}
+                    className="p-2 hover:bg-blue-500 hover:text-white dark:hover:bg-blue-600 cursor-pointer"
+                  >
+                    {customer.name}
+                  </li>
+                ))
+              ) : (
+                <li className="p-2 text-gray-500 dark:text-gray-400">
+                  No customers found.
+                </li>
+              )}
+              {/* Add New Customer Link */}
+              <li className="p-2 border-t border-gray-200 dark:border-gray-600">
+                <a
+                  href="/create-customer"
+                  className="text-blue-600 dark:text-blue-400 hover:underline text-sm font-semibold"
+                >
+                  + Add New Customer
+                </a>
+              </li>
+            </ul>
+          )}
+        </div>
+      </div>
+      {/* Address Line 1 */}
+      <div>
+        <label
+          htmlFor="address_line1"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+        >
+          Address Line 1
+        </label>
         <input
-          id="shipTo"
+          id="address_line1"
           type="text"
-          name="shipTo"
-          placeholder="e.g., John Doe"
-          value={formData.shipTo}
-          onChange={handleChange}
-          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+          name="address_line1"
+          placeholder="Auto-populated"
+          value={formData.address_line1}
+          readOnly
+          className="w-full p-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-300"
+        />
+      </div>
+
+      {/* Address Line 2 */}
+      <div>
+        <label
+          htmlFor="address_line2"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+        >
+          Address Line 2
+        </label>
+        <input
+          id="address_line2"
+          type="text"
+          name="address_line2"
+          placeholder="Auto-populated"
+          value={formData.address_line2}
+          readOnly
+          className="w-full p-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-300"
         />
       </div>
       <div>
@@ -34,27 +118,10 @@ const TopInfoPanel = ({ formData, handleChange, totals }) => (
           id="gstin"
           type="text"
           name="gstin"
-          placeholder="e.g., 22AAAAA0000A1Z5"
+          placeholder="Auto-populated"
           value={formData.gstin}
-          onChange={handleChange}
-          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
-        />
-      </div>
-      <div>
-        <label
-          htmlFor="codeNumber"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          Code Number
-        </label>
-        <input
-          id="codeNumber"
-          type="text"
-          name="codeNumber"
-          placeholder="e.g., 12345"
-          value={formData.codeNumber}
-          onChange={handleChange}
-          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+          readOnly
+          className="w-full p-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-300"
         />
       </div>
     </div>
@@ -109,7 +176,7 @@ const TopInfoPanel = ({ formData, handleChange, totals }) => (
           type="text"
           name="terms"
           placeholder="e.g., Net 30 Days"
-          value={formData.terms}
+          value={formData.terms || "30 Days"}
           onChange={handleChange}
           className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
         />

@@ -7,7 +7,8 @@ import { FormHeader } from "./FormHeader";
 const initialFormData = {
   shipTo: "",
   gstin: "",
-  codeNumber: "",
+  address_line1: "",
+  address_line2: "",
   billNo: "",
   date: "",
   terms: "",
@@ -27,6 +28,9 @@ export default function InvoiceForm() {
     adjustment: 0,
     roundedTotal: 0,
   });
+  const [customers, setCustomers] = useState([]);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
+  const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
 
   // --- Theme State and Logic ---
   const [theme, setTheme] = useState(
@@ -46,6 +50,23 @@ export default function InvoiceForm() {
     setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
   };
 
+  // --- Data Fetching for Customers ---
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/customer");
+        if (!response.ok) throw new Error("Network response was not ok");
+        const data = await response.json();
+        setCustomers(data);
+      } catch (error) {
+        console.error("Failed to fetch customers:", error);
+      } finally {
+        setIsLoadingCustomers(false);
+      }
+    };
+    fetchCustomers();
+  }, []);
+
   useEffect(() => {
     const existingData = localStorage.getItem("invoiceData");
     if (existingData) {
@@ -64,6 +85,20 @@ export default function InvoiceForm() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === "shipTo") {
+      setIsSuggestionsVisible(true);
+    }
+  };
+
+  const handleSuggestionClick = (customer) => {
+    setFormData((prev) => ({
+      ...prev,
+      shipTo: customer.name,
+      gstin: customer.gstin,
+      address_line1: customer.address_line1 || "",
+      address_line2: customer.address_line2 || "",
+    }));
+    setIsSuggestionsVisible(false);
   };
 
   const handleItemChange = (index, e) => {
@@ -89,11 +124,16 @@ export default function InvoiceForm() {
     setFormData((prev) => ({ ...prev, items: newItems }));
   };
 
-  // --- New handleClear function ---
   const handleClear = () => {
     localStorage.removeItem("invoiceData");
     setFormData(initialFormData);
   };
+
+  const filteredCustomers = formData.shipTo
+    ? customers.filter((customer) =>
+        customer.name.toLowerCase().includes(formData.shipTo.toLowerCase())
+      )
+    : customers;
 
   useEffect(() => {
     const subTotal = formData.items.reduce(
@@ -130,7 +170,16 @@ export default function InvoiceForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const dataToSave = { ...formData, ...totals };
+
+    const dataToSave = {
+      ...formData,
+      ...totals,
+      terms:
+        formData.terms && formData.terms.trim() !== ""
+          ? formData.terms
+          : "30 Days",
+    };
+
     localStorage.setItem("invoiceData", JSON.stringify(dataToSave));
     navigate("/invoice");
   };
@@ -150,6 +199,12 @@ export default function InvoiceForm() {
               formData={formData}
               handleChange={handleChange}
               totals={totals}
+              customers={customers}
+              handleSuggestionClick={handleSuggestionClick}
+              isSuggestionsVisible={isSuggestionsVisible}
+              setIsSuggestionsVisible={setIsSuggestionsVisible}
+              isLoadingCustomers={isLoadingCustomers}
+              filteredCustomers={filteredCustomers}
             />
             <ItemsList
               items={formData.items}

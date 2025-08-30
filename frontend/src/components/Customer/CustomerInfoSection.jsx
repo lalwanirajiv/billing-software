@@ -26,7 +26,7 @@ const CustomerInfoSection = ({ customerData, handleChange }) => (
         htmlFor="gstin"
         className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
       >
-        GSTIN
+        GST NO
       </label>
       <input
         id="gstin"
