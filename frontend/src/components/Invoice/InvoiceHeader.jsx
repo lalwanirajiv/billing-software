@@ -1,5 +1,5 @@
 import React from 'react';
-import { SunIcon, MoonIcon } from './Icons';
+import { SunIcon, MoonIcon } from '../Icons/Icons';
 
 const InvoiceHeader = ({ handleSave, handleEdit, toggleTheme, theme, saveMessage }) => (
   <>

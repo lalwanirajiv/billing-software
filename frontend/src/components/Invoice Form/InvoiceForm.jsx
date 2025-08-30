@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import TopInfoPanel from "./TopInfoPanel";
 import ItemsList from "./ItemsList";
-// --- Helper Components & Icons ---
+import { FormHeader } from "./FormHeader";
 
 const TrashIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -21,6 +21,22 @@ export default function InvoiceForm() {
   const [totals, setTotals] = useState({
     subTotal: 0, totalQty: 0, cgst: 0, sgst: 0, igst: 0, adjustment: 0, roundedTotal: 0,
   });
+
+  // --- Theme State and Logic ---
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || 'light');
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+  };
 
   useEffect(() => {
     const existingData = localStorage.getItem("invoiceData");
@@ -81,10 +97,10 @@ export default function InvoiceForm() {
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen">
+    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Create / Edit Invoice</h1>
+        <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg">
+          <FormHeader toggleTheme={toggleTheme} theme={theme} />
           
           <form onSubmit={handleSubmit} className="space-y-8">
             <TopInfoPanel formData={formData} handleChange={handleChange} totals={totals} />
@@ -100,3 +116,4 @@ export default function InvoiceForm() {
     </div>
   );
 }
+

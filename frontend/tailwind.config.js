@@ -4,6 +4,7 @@ module.exports = {
     "./index.html",   // if using Vite
     "./src/**/*.{js,ts,jsx,tsx}", // all React files
   ],
+  darkMode: 'class', 
   theme: {
     extend: {},
   },
