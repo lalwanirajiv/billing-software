@@ -66,12 +66,13 @@ export const getCustomerById = async (req, res) => {
 export const deleteCustomer = async (req, res) => {
   try {
     const { id } = req.params;
-
+    console.log("This is ID: ",id);
+    
     const [customer] = await sql`
       UPDATE customers 
       SET is_deleted = TRUE, deleted_at = NOW()
-      WHERE id = ${id} AND is_deleted = FALSE
-      RETURNING id, name
+      WHERE customer_id = ${id} AND is_deleted = FALSE
+      RETURNING customer_id, name
     `;
 
     if (!customer) {
