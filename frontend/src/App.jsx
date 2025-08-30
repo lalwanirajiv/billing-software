@@ -1,10 +1,11 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./components/Home";
-import Invoice from "./components/Invoice/Invoice"; 
+import Invoice from "./components/Invoice/Invoice";
 import InvoiceForm from "./components/Invoice Form/InvoiceForm";
 import CustomerForm from "./components/Customer/CustomerForm";
 import Header from "./components/Header/Header";
 import { useState, useEffect } from "react";
+import CustomerList from "./components/List Of Customers/CustomerList";
 
 function App() {
   const [theme, setTheme] = useState("light");
@@ -28,6 +29,7 @@ function App() {
         <Route path="/invoice" element={<Invoice />} />
         <Route path="/invoice-form" element={<InvoiceForm />} />
         <Route path="/create-customer" element={<CustomerForm />} />
+        <Route path="/customers" element={<CustomerList />} />
       </Routes>
     </Router>
   );

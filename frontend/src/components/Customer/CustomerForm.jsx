@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import FormHeader from "./FormHeader";
 import AddressSection from "./AddressSection";
 import CustomerInfoSection from "./CustomerInfoSection";
@@ -7,12 +7,39 @@ const initialCustomerData = {
   name: "",
   address_line1: "",
   address_line2: "",
+  phone: "",
   gstin: "",
 };
 
 export default function CustomerForm() {
   const [customerData, setCustomerData] = useState(initialCustomerData);
   const [saveStatus, setSaveStatus] = useState("");
+
+  // --- Theme State and Logic ---
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) return savedTheme;
+    if (
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+    ) {
+      return "dark";
+    }
+    return "light";
+  });
+
+  useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -22,9 +49,7 @@ export default function CustomerForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaveStatus("saving");
-    // TODO: Add your API call logic here
     try {
-      // Example API call
       const response = await fetch("http://localhost:5000/api/customer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -42,9 +67,10 @@ export default function CustomerForm() {
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
-      <div className="max-w-5xl w-full bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
-        <FormHeader />
+    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
+      <div className="max-w-5xl w-full bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg">
+        {/* Pass theme toggle to FormHeader */}
+        <FormHeader toggleTheme={toggleTheme} theme={theme} />
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -60,15 +86,19 @@ export default function CustomerForm() {
 
           <div className="flex justify-end items-center gap-4 pt-4">
             {saveStatus === "success" && (
-              <p className="text-green-600 font-medium">Customer saved!</p>
+              <p className="text-green-600 dark:text-green-400 font-medium">
+                Customer saved!
+              </p>
             )}
             {saveStatus === "error" && (
-              <p className="text-red-600 font-medium">Failed to save.</p>
+              <p className="text-red-600 dark:text-red-400 font-medium">
+                Failed to save.
+              </p>
             )}
 
             <button
               type="submit"
-              className="w-full md:w-auto px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md disabled:bg-gray-400"
+              className="w-full md:w-auto px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md disabled:bg-gray-400 dark:disabled:bg-gray-600"
               disabled={saveStatus === "saving"}
             >
               {saveStatus === "saving" ? "Saving..." : "Save Customer"}
