@@ -1,18 +1,27 @@
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./components/Home";
 import Invoice from "./components/Invoice/Invoice"; 
 import InvoiceForm from "./components/Invoice Form/InvoiceForm";
 import CustomerForm from "./components/Customer/CustomerForm";
-
+import Header from "./components/Header/Header";
+import { useState, useEffect } from "react";
 
 function App() {
+  const [theme, setTheme] = useState("light");
+
+  // Toggle theme
+  const toggleTheme = () => {
+    setTheme(theme === "light" ? "dark" : "light");
+  };
+
+  // Apply theme to HTML
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
+
   return (
     <Router>
-      {/* <nav className="p-4 bg-gray-200 flex gap-4">
-        <Link to="/">Home</Link>
-        <Link to="/invoice">Invoice</Link>
-        <Link to="/invoice-form">Invoice Form</Link>
-      </nav> */}
+      <Header toggleTheme={toggleTheme} theme={theme} />
 
       <Routes>
         <Route path="/" element={<Home />} />

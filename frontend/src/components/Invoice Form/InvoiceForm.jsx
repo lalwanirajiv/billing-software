@@ -32,24 +32,6 @@ export default function InvoiceForm() {
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
   const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
 
-  // --- Theme State and Logic ---
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem("theme") || "light"
-  );
-
-  useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
-  };
-
   // --- Data Fetching for Customers ---
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -170,7 +152,6 @@ export default function InvoiceForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
     const dataToSave = {
       ...formData,
       ...totals,
@@ -179,20 +160,15 @@ export default function InvoiceForm() {
           ? formData.terms
           : "30 Days",
     };
-
     localStorage.setItem("invoiceData", JSON.stringify(dataToSave));
     navigate("/invoice");
   };
 
   return (
-    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
+    <div className="bg-gray-100 min-h-screen">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg">
-          <FormHeader
-            toggleTheme={toggleTheme}
-            theme={theme}
-            handleClear={handleClear}
-          />
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
+          <FormHeader handleClear={handleClear} />
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <TopInfoPanel
