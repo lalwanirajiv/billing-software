@@ -8,7 +8,7 @@ const AddressSection = ({ customerData, handleChange }) => (
         htmlFor="address_line1"
         className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
       >
-        Address Line 1
+        Address Line 1 <span className="text-red-500">*</span>
       </label>
       <input
         id="address_line1"
@@ -17,9 +17,14 @@ const AddressSection = ({ customerData, handleChange }) => (
         placeholder="e.g., 123 Business Rd"
         value={customerData.address_line1}
         onChange={handleChange}
-        className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+        required
+        className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md 
+                   focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100
+                   invalid:border-red-500 invalid:ring-red-500"
       />
     </div>
+
+    {/* Address Line 2 (Optional) */}
     <div>
       <label
         htmlFor="address_line2"
@@ -34,9 +39,11 @@ const AddressSection = ({ customerData, handleChange }) => (
         placeholder="e.g., Suite 456"
         value={customerData.address_line2}
         onChange={handleChange}
-        className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+        className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md 
+                   focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
       />
     </div>
   </div>
 );
+
 export default AddressSection;
