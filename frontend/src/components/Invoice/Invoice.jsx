@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-// Import all the final, individual components
-import InvoiceHeader from "./InvoiceHeader";
-import ShipToDetails from "./ShipToDetails";
 import SellerDetails from "./SellerDetails";
 import InvoiceMeta from "./InvoiceMeta";
-import InvoiceItemsTable from "./InvoiceItemsTable";
+import InvoiceHeader from "./InvoiceHeader";
 import SellerBankDetails from "./SellerBankDetails";
+import InvoiceItemsTable from "./InvoiceItemsTable";
 import InvoiceTotals from "./InvoiceTotals";
+import ShipToDetails from "./ShipToDetails";
+import { Toast } from "../List Of Customers/Toast";
 
+// --- Utility: Format Date ---
 const formatDateToDDMMYYYY = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);
@@ -21,9 +22,10 @@ const formatDateToDDMMYYYY = (dateString) => {
 
 export default function Invoice() {
   const navigate = useNavigate();
+
   const [invoiceData, setInvoiceData] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState("");
+  const [toast, setToast] = useState({ message: "", type: "" });
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
 
   // --- Theme Management ---
@@ -36,31 +38,52 @@ export default function Invoice() {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  const toggleTheme = () => {
+  const toggleTheme = () =>
     setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
-  };
 
-  // --- Data Loading ---
+  // --- Load Data ---
   useEffect(() => {
     const savedData = localStorage.getItem("invoiceData");
-    if (savedData) {
-      setInvoiceData(JSON.parse(savedData));
-    }
+    if (savedData) setInvoiceData(JSON.parse(savedData));
   }, []);
 
-  // --- Event Handlers ---
-  const handleEdit = () => {
-    navigate("/invoice-form");
-  };
+  // --- Auto-hide Toast ---
+  useEffect(() => {
+    if (toast.message) {
+      const timer = setTimeout(() => {
+        setToast({ message: "", type: "" });
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // --- Handlers ---
+  const handleEdit = () => navigate("/invoice-form");
 
   const handleSave = async () => {
     if (!invoiceData) return;
     setIsSaving(true);
-    setSaveMessage("");
+    setToast({ message: "", type: "" });
 
     try {
-      // --- First save invoice ---
+      // 1. Check for duplicate bill number
+      const checkResponse = await fetch(
+        `http://localhost:5000/api/invoices/check/${invoiceData.billNo}`
+      );
+      if (checkResponse.ok) {
+        const { exists } = await checkResponse.json();
+        if (exists) {
+          throw new Error(
+            `Invoice with Bill Number #${invoiceData.billNo} already exists.`
+          );
+        }
+      } else {
+        throw new Error("Could not verify bill number uniqueness.");
+      }
+
+      // 2. Prepare & Save Invoice
       const invoicePayload = {
+        customer_id: invoiceData.customerId,
         ship_to: invoiceData.shipTo,
         bill_no: Number(invoiceData.billNo),
         date: invoiceData.date,
@@ -69,8 +92,6 @@ export default function Invoice() {
         grand_total: invoiceData.roundedTotal,
         created_at: new Date().toISOString(),
       };
-
-      console.log("Sending Invoice Payload:", invoicePayload);
 
       const invoiceResponse = await fetch(
         "http://localhost:5000/api/invoices",
@@ -87,14 +108,12 @@ export default function Invoice() {
       }
 
       const savedInvoice = await invoiceResponse.json();
-      console.log("Saved Invoice Response:", savedInvoice);
-
-      // ✅ Support all possible keys
       const invoiceId =
         savedInvoice.invoiceId || savedInvoice.invoice_id || savedInvoice.id;
+
       if (!invoiceId) throw new Error("Invoice ID missing in response");
 
-      // --- Now save each item one by one ---
+      // 3. Save Items
       for (const item of invoiceData.items) {
         const itemPayload = {
           invoice_id: invoiceId,
@@ -104,8 +123,6 @@ export default function Invoice() {
           total: item.amount,
         };
 
-        console.log("Sending Item Payload:", itemPayload);
-
         const itemResponse = await fetch("http://localhost:5000/api/items", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -113,23 +130,16 @@ export default function Invoice() {
         });
 
         if (!itemResponse.ok) {
-          const errorText = await itemResponse.text();
-          throw new Error(
-            `Failed to save invoice item: ${item.name}. Server: ${errorText}`
-          );
+          throw new Error(`Failed to save invoice item: ${item.name}.`);
         }
-
-        const savedItem = await itemResponse.json();
-        console.log("Saved Item:", savedItem);
       }
 
-      setSaveMessage("Invoice Saved Successfully!");
+      setToast({ message: "Invoice Saved Successfully!", type: "success" });
     } catch (error) {
       console.error("Save failed:", error);
-      setSaveMessage(`Error: ${error.message}`);
+      setToast({ message: `Error: ${error.message}`, type: "error" });
     } finally {
       setIsSaving(false);
-      setTimeout(() => setSaveMessage(""), 3000);
     }
   };
 
@@ -142,16 +152,22 @@ export default function Invoice() {
     );
   }
 
-  // --- Render Method ---
+  // --- Render ---
   return (
     <div className="bg-gray-100 dark:bg-gray-900 min-h-screen p-4 sm:p-6 lg:p-8 text-gray-800 dark:text-gray-200 uppercase">
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ message: "", type: "" })}
+      />
+
       <div className="max-w-4xl mx-auto">
         <InvoiceHeader
           handleSave={handleSave}
           handleEdit={handleEdit}
           toggleTheme={toggleTheme}
           theme={theme}
-          saveMessage={saveMessage}
+          isSaving={isSaving}
         />
 
         <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg">
@@ -161,7 +177,6 @@ export default function Invoice() {
           </header>
 
           <main>
-            {/* Using the smaller components directly */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <ShipToDetails data={invoiceData} />
               <SellerDetails />
@@ -180,7 +195,6 @@ export default function Invoice() {
               subTotal={invoiceData.subTotal}
             />
 
-            {/* Using the smaller components directly */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
               <SellerBankDetails data={invoiceData} />
               <InvoiceTotals data={invoiceData} />

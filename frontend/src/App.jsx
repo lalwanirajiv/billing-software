@@ -6,6 +6,7 @@ import CustomerForm from "./components/Customer/CustomerForm";
 import Header from "./components/Header/Header";
 import { useState, useEffect } from "react";
 import CustomerList from "./components/List Of Customers/CustomerList";
+import InvoiceList from "./components/List of Invoices/InvoiceList";
 
 function App() {
   const [theme, setTheme] = useState("light");
@@ -30,6 +31,7 @@ function App() {
         <Route path="/invoice-form" element={<InvoiceForm />} />
         <Route path="/create-customer" element={<CustomerForm />} />
         <Route path="/customers" element={<CustomerList />} />
+        <Route path="/invoices" element={<InvoiceList />} />
       </Routes>
     </Router>
   );
