@@ -1,12 +1,22 @@
-import sql from '../db.js';
+import sql from "../db.js";
 
 // --- Create Invoice (with optional items) ---
 export const createInvoice = async (req, res) => {
   try {
-    const { ship_to, bill_no, date, terms_of_payment, state, grand_total, items } = req.body;
+    const {
+      ship_to,
+      bill_no,
+      date,
+      terms_of_payment,
+      state,
+      grand_total,
+      items,
+    } = req.body;
 
     if (!ship_to || ship_to.trim() === "") {
-      return res.status(400).json({ error: "Customer Name (ship_to) is required." });
+      return res
+        .status(400)
+        .json({ error: "Customer Name (ship_to) is required." });
     }
 
     // Insert invoice
@@ -15,9 +25,9 @@ export const createInvoice = async (req, res) => {
       (ship_to, bill_no, date, terms_of_payment, state, grand_total, created_at)
       VALUES
       (${ship_to}, ${bill_no}, ${date}, ${terms_of_payment}, ${state}, ${grand_total}, NOW())
-      RETURNING id
+      RETURNING invoice_id
     `;
-    const invoiceId = invoice.id;
+    const invoiceId = invoice.invoice_id;
 
     // Insert items if any
     if (items && items.length > 0) {
@@ -44,7 +54,8 @@ export const getInvoiceById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [invoice] = await sql`SELECT * FROM invoices WHERE id = ${id}`;
+    const [invoice] =
+      await sql`SELECT * FROM invoices WHERE invoice_id = ${id}`;
     if (!invoice) return res.status(404).json({ error: "Invoice not found" });
 
     const items = await sql`SELECT * FROM items WHERE invoice_id = ${id}`;
@@ -63,5 +74,33 @@ export const getAllInvoices = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
+  }
+};
+
+export const getInvoicesWithCustomer = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result =
+      await sql`SELECT ship_to FROM invoices WHERE invoice_id = '${id}'`;
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch invoices" });
+  }
+};
+// invoicesController.js
+export const checkInvoice = async (req, res) => {
+  const { billNo } = req.params;
+  try {
+    const invoice = await sql`SELECT * FROM invoices WHERE bill_no = ${billNo}`;
+    if (invoice.length > 0) {
+      res.json({ exists: true });
+    } else {
+      res.json({ exists: false });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Database error" });
   }
 };
