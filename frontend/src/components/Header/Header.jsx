@@ -31,13 +31,11 @@ const Header = ({ toggleTheme, theme }) => {
   }, []);
 
   const navLinkClasses = `
-  text-gray-600 dark:text-gray-300 
-  hover:text-blue-600 dark:hover:text-blue-400 
-  font-medium transition-colors 
-  focus:outline-none focus:ring-0 
-  active:bg-transparent 
-  hover:bg-transparent 
-`;
+    text-gray-600 dark:text-gray-300 
+    hover:text-blue-600 dark:hover:text-blue-400 
+    font-medium transition-colors 
+    cursor-pointer select-none
+  `;
 
   const dropdownLinkClasses =
     "block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700";
@@ -77,12 +75,12 @@ const Header = ({ toggleTheme, theme }) => {
 
             {/* Invoice Dropdown */}
             <div className="relative" ref={invoiceMenuRef}>
-              <div
+              <span
                 onClick={() => setInvoiceMenuOpen(!isInvoiceMenuOpen)}
-                className={`${navLinkClasses} cursor-pointer select-none`}
+                className={navLinkClasses}
               >
                 Invoices ▾
-              </div>
+              </span>
               {isInvoiceMenuOpen && (
                 <div className="absolute mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1">
                   <Link to="/invoice-form" className={dropdownLinkClasses}>
@@ -97,12 +95,12 @@ const Header = ({ toggleTheme, theme }) => {
 
             {/* Customer Dropdown */}
             <div className="relative" ref={customerMenuRef}>
-              <div
+              <span
                 onClick={() => setCustomerMenuOpen(!isCustomerMenuOpen)}
-                className={`${navLinkClasses} cursor-pointer select-none`}
+                className={navLinkClasses}
               >
                 Customers ▾
-              </div>
+              </span>
               {isCustomerMenuOpen && (
                 <div className="absolute mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1">
                   <Link to="/create-customer" className={dropdownLinkClasses}>
@@ -149,43 +147,46 @@ const Header = ({ toggleTheme, theme }) => {
           <div className="md:hidden pt-2 pb-4 space-y-1">
             <Link
               to="/dashboard"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
             >
               Dashboard
             </Link>
+
             <h3 className="px-3 pt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Invoices
             </h3>
             <Link
               to="/invoice-form"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
             >
               Create Invoice
             </Link>
             <Link
               to="/invoices"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
             >
               View All Invoices
             </Link>
+
             <h3 className="px-3 pt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Customers
             </h3>
             <Link
               to="/create-customer"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
             >
               Create Customer
             </Link>
             <Link
               to="/customers"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
             >
               View All Customers
             </Link>
+
             <Link
               to="/reports"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
             >
               Reports
             </Link>

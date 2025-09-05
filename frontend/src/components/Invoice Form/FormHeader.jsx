@@ -1,4 +1,4 @@
-export const FormHeader = ({  handleClear }) => (
+const FormHeader = ({ handleClear }) => (
   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
     <div className="flex-grow">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
@@ -16,3 +16,5 @@ export const FormHeader = ({  handleClear }) => (
     </div>
   </div>
 );
+
+export default FormHeader;
