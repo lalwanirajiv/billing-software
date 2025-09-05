@@ -1,4 +1,4 @@
-import { CheckCircleIcon, AlertTriangleIcon } from "../Icons/Icons";
+import { CheckCircleIcon, AlertTriangleIcon } from "./Icons";
 
 export const Toast = ({ message, type = "error", onClose }) => {
   if (!message) return null;

@@ -1,5 +1,5 @@
 import React from "react";
-import { SunIcon, MoonIcon } from "../Icons/Icons";
+import { SunIcon, MoonIcon } from "../Reusables/Icons";
 
 const InvoiceHeader = ({
   handleSave,

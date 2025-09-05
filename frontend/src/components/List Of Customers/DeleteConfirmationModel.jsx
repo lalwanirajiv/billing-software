@@ -1,4 +1,4 @@
-import { AlertTriangleIcon } from "../Icons/Icons";
+import { AlertTriangleIcon } from "../Reusables/Icons";
 export const DeleteConfirmationModal = ({
   isOpen,
   onClose,
