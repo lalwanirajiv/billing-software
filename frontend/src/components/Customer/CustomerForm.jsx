@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import FormHeader from "./FormHeader";
 import AddressSection from "./AddressSection";
 import CustomerInfoSection from "./CustomerInfoSection";
@@ -14,32 +14,6 @@ const initialCustomerData = {
 export default function CustomerForm() {
   const [customerData, setCustomerData] = useState(initialCustomerData);
   const [saveStatus, setSaveStatus] = useState("");
-
-  // --- Theme State and Logic ---
-  const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) return savedTheme;
-    if (
-      window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches
-    ) {
-      return "dark";
-    }
-    return "light";
-  });
-
-  useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -69,8 +43,8 @@ export default function CustomerForm() {
   return (
     <div className="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
       <div className="max-w-5xl w-full bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg">
-        {/* Pass theme toggle to FormHeader */}
-        <FormHeader toggleTheme={toggleTheme} theme={theme} />
+        {/* Form Header (no theme toggle needed here anymore) */}
+        <FormHeader />
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

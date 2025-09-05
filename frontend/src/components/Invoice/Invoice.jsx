@@ -26,22 +26,8 @@ export default function Invoice() {
   const [invoiceData, setInvoiceData] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState({ message: "", type: "" });
-  const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
 
-  // --- Theme Management ---
-  useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  const toggleTheme = () =>
-    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
-
-  // --- Load Data ---
+  // --- Load Data from localStorage (invoice draft) ---
   useEffect(() => {
     const savedData = localStorage.getItem("invoiceData");
     if (savedData) setInvoiceData(JSON.parse(savedData));
@@ -165,8 +151,6 @@ export default function Invoice() {
         <InvoiceHeader
           handleSave={handleSave}
           handleEdit={handleEdit}
-          toggleTheme={toggleTheme}
-          theme={theme}
           isSaving={isSaving}
         />
 

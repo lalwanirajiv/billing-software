@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import TopInfoPanel from "./TopInfoPanel";
 import ItemsList from "./ItemsList";
-import { FormHeader } from "./FormHeader";
+import FormHeader from "./FormHeader";
 
 const initialFormData = {
   shipTo: "",
@@ -32,30 +32,7 @@ export default function InvoiceForm() {
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
   const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
 
-  // --- Theme State and Logic ---
-  const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) return savedTheme;
-    if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      return "dark";
-    }
-    return "light";
-  });
-
-  useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  };
-
-  // --- Data Fetching for Customers ---
+  // --- Load Customers ---
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
@@ -72,6 +49,7 @@ export default function InvoiceForm() {
     fetchCustomers();
   }, []);
 
+  // --- Load Existing Invoice Draft ---
   useEffect(() => {
     const existingData = localStorage.getItem("invoiceData");
     if (existingData) {
@@ -87,12 +65,11 @@ export default function InvoiceForm() {
     }
   }, []);
 
+  // --- Handlers ---
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (name === "shipTo") {
-      setIsSuggestionsVisible(true);
-    }
+    if (name === "shipTo") setIsSuggestionsVisible(true);
   };
 
   const handleSuggestionClick = (customer) => {
@@ -111,9 +88,8 @@ export default function InvoiceForm() {
     const newItems = [...formData.items];
     newItems[index][name] =
       name === "name" || name === "hsn" ? value : parseFloat(value) || 0;
-    const qty = newItems[index].qty || 0;
-    const rate = newItems[index].rate || 0;
-    newItems[index].amount = qty * rate;
+    newItems[index].amount =
+      (newItems[index].qty || 0) * (newItems[index].rate || 0);
     setFormData((prev) => ({ ...prev, items: newItems }));
   };
 
@@ -125,8 +101,10 @@ export default function InvoiceForm() {
   };
 
   const removeItem = (index) => {
-    const newItems = formData.items.filter((_, i) => i !== index);
-    setFormData((prev) => ({ ...prev, items: newItems }));
+    setFormData((prev) => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }));
   };
 
   const handleClear = () => {
@@ -134,12 +112,7 @@ export default function InvoiceForm() {
     setFormData(initialFormData);
   };
 
-  const filteredCustomers = formData.shipTo
-    ? customers.filter((customer) =>
-        customer.name.toLowerCase().includes(formData.shipTo.toLowerCase())
-      )
-    : customers;
-
+  // --- Totals Calculation ---
   useEffect(() => {
     const subTotal = formData.items.reduce(
       (acc, item) => acc + (item.amount || 0),
@@ -149,18 +122,22 @@ export default function InvoiceForm() {
       (acc, item) => acc + (item.qty || 0),
       0
     );
+
     let cgst = 0,
       sgst = 0,
       igst = 0;
+
     if (formData.state.toLowerCase() === "interstate") {
       igst = subTotal * 0.05;
     } else {
       cgst = subTotal * 0.025;
       sgst = subTotal * 0.025;
     }
+
     const totalAmount = subTotal + cgst + sgst + igst;
     const roundedTotal = Math.round(totalAmount);
     const adjustment = roundedTotal - totalAmount;
+
     setTotals({
       subTotal,
       totalQty,
@@ -173,25 +150,24 @@ export default function InvoiceForm() {
     });
   }, [formData.items, formData.state]);
 
+  // --- Submit ---
   const handleSubmit = (e) => {
     e.preventDefault();
     const dataToSave = {
       ...formData,
       ...totals,
-      terms:
-        formData.terms && formData.terms.trim() !== ""
-          ? formData.terms
-          : "30 Days",
+      terms: formData.terms?.trim() !== "" ? formData.terms : "30 Days",
     };
     localStorage.setItem("invoiceData", JSON.stringify(dataToSave));
     navigate("/invoice");
   };
 
+  // --- Render ---
   return (
     <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg">
-          <FormHeader handleClear={handleClear} toggleTheme={toggleTheme} theme={theme} />
+          <FormHeader handleClear={handleClear} />
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <TopInfoPanel
@@ -203,8 +179,17 @@ export default function InvoiceForm() {
               isSuggestionsVisible={isSuggestionsVisible}
               setIsSuggestionsVisible={setIsSuggestionsVisible}
               isLoadingCustomers={isLoadingCustomers}
-              filteredCustomers={filteredCustomers}
-            />  
+              filteredCustomers={
+                formData.shipTo
+                  ? customers.filter((c) =>
+                      c.name
+                        .toLowerCase()
+                        .includes(formData.shipTo.toLowerCase())
+                    )
+                  : customers
+              }
+            />
+
             <ItemsList
               items={formData.items}
               handleItemChange={handleItemChange}

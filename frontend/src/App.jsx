@@ -1,25 +1,40 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { useState, useEffect } from "react";
+
 import Home from "./components/Home";
 import Invoice from "./components/Invoice/Invoice";
 import InvoiceForm from "./components/Invoice Form/InvoiceForm";
 import CustomerForm from "./components/Customer/CustomerForm";
-import Header from "./components/Header/Header";
-import { useState, useEffect } from "react";
 import CustomerList from "./components/List Of Customers/CustomerList";
 import InvoiceList from "./components/List of Invoices/InvoiceList";
+import Header from "./components/Header/Header";
 
 function App() {
-  const [theme, setTheme] = useState("light");
+  // Initialize theme from sessionStorage or system preference
+  const [theme, setTheme] = useState(() => {
+    const storedTheme = sessionStorage.getItem("theme");
+    if (storedTheme) return storedTheme;
 
-  // Toggle theme
-  const toggleTheme = () => {
-    setTheme(theme === "light" ? "dark" : "light");
-  };
+    if (
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+    ) {
+      return "dark";
+    }
 
-  // Apply theme to HTML
+    return "light";
+  });
+
+  // Apply theme to <html> and save to sessionStorage
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
+    sessionStorage.setItem("theme", theme);
   }, [theme]);
+
+  // Toggle theme between light and dark
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  };
 
   return (
     <Router>
