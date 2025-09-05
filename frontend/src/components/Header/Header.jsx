@@ -69,7 +69,7 @@ const Header = ({ toggleTheme, theme }) => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex md:items-center md:space-x-8">
-            <Link to="/dashboard" className={navLinkClasses}>
+            <Link to="/" className={navLinkClasses}>
               Dashboard
             </Link>
 

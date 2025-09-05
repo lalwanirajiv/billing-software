@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useState, useEffect } from "react";
 
-import Home from "./components/Home";
+import Home from "./components/Dashboard/Dashboard";
 import Invoice from "./components/Invoice/Invoice";
 import InvoiceForm from "./components/Invoice Form/InvoiceForm";
 import CustomerForm from "./components/Customer/CustomerForm";
