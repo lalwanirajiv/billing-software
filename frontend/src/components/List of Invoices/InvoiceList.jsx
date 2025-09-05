@@ -1,112 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
-
-// --- SVG Icon Components ---
-const EditIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-5 w-5"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z"
-    />
-  </svg>
-);
-
-const DeleteIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-5 w-5"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-    />
-  </svg>
-);
-
-const AlertTriangleIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-12 w-12 text-red-500"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-    />
-  </svg>
-);
-
-const CheckCircleIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-6 w-6 text-green-500"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-    />
-  </svg>
-);
-
-const SearchIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-5 w-5 text-gray-400"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-    />
-  </svg>
-);
-
-// --- Child Components ---
-const Toast = ({ message, onClose }) => {
-  if (!message) return null;
-  return (
-    <div className="fixed top-5 right-5 z-50 transition-transform transform-gpu animate-slide-in-down">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 flex items-center space-x-4 border-l-4 border-green-500">
-        <CheckCircleIcon />
-        <p className="text-gray-800 dark:text-gray-200 font-medium">
-          {message}
-        </p>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-        >
-          &times;
-        </button>
-      </div>
-    </div>
-  );
-};
+import { Link, useNavigate } from "react-router-dom"; 
+import {
+  DeleteIcon,
+  AlertTriangleIcon,
+  EditIcon,
+  SearchIcon,
+} from "../Reusables/Icons";
+import { Toast } from "../Reusables/Toast";
 
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, billNo }) => {
   if (!isOpen) return null;
@@ -122,8 +22,8 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, billNo }) => {
             Confirm Deletion
           </h2>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Are you sure you want to delete Invoice #{billNo}? This action
-            cannot be undone.
+            Are you sure you want to delete Invoice number: {billNo}? This
+            action cannot be undone.
           </p>
         </div>
         <div className="mt-8 flex justify-center space-x-4">
@@ -142,7 +42,6 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, billNo }) => {
   );
 };
 
-// --- Main InvoiceList Component ---
 export default function InvoiceList() {
   const navigate = useNavigate(); // Hook for navigation
   const [invoices, setInvoices] = useState([]);

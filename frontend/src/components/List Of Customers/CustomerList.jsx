@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModel";
-import { Toast } from "./Toast";
-import { EditIcon, TrashIcon, SearchIcon } from "../Icons/Icons";
+import { Toast } from "../Reusables/Toast";
+import { EditIcon, TrashIcon, SearchIcon } from "../Reusables/Icons";
 
 export default function CustomerList() {
   const [customers, setCustomers] = useState([]);

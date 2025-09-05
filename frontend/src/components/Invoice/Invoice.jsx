@@ -8,7 +8,7 @@ import SellerBankDetails from "./SellerBankDetails";
 import InvoiceItemsTable from "./InvoiceItemsTable";
 import InvoiceTotals from "./InvoiceTotals";
 import ShipToDetails from "./ShipToDetails";
-import { Toast } from "../List Of Customers/Toast";
+import { Toast } from "../Reusables/Toast";
 
 // --- Utility: Format Date ---
 const formatDateToDDMMYYYY = (dateString) => {

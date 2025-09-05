@@ -1,5 +1,5 @@
 import React from "react";
-import { TrashIcon } from "../Icons/Icons";
+import { TrashIcon } from "../Reusables/Icons";
 
 const ItemsList = ({ items, handleItemChange, addItem, removeItem }) => (
   <div>

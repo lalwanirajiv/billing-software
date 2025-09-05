@@ -1,4 +1,4 @@
-import { UserPlusIcon } from "../Icons/Icons";
+import { UserPlusIcon } from "../Reusables/Icons";
 
 const FormHeader = () => (
   <div className="flex justify-between items-start mb-8">
