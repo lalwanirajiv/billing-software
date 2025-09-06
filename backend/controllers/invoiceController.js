@@ -16,7 +16,7 @@ export const createInvoice = async (req, res) => {
       igst,
       grand_total,
       items,
-      customer_id
+      customer_id,
     } = req.body;
 
     if (!ship_to || ship_to.trim() === "") {
@@ -108,5 +108,23 @@ export const checkInvoice = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Database error" });
+  }
+};
+
+export const updateStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body; // ✅ should come from body, not params
+  try {
+    const result =
+      await sql`UPDATE invoices SET invoice_status = ${status} WHERE invoice_id = ${id} RETURNING *`;
+
+    if (result.count === 0) {
+      return res.status(404).json({ message: "Invoice not found" });
+    }
+
+    res.json(result[0]); // return the updated row
+  } catch (error) {
+    console.error("Error updating status:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
