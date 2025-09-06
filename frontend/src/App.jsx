@@ -43,7 +43,9 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/invoice" element={<Invoice />} />
+        <Route path="/invoice/:id" element={<Invoice />} />
         <Route path="/invoice-form" element={<InvoiceForm />} />
+        <Route path="/invoice-form/:id" element={<InvoiceForm />} />
         <Route path="/create-customer" element={<CustomerForm />} />
         <Route path="/customers" element={<CustomerList />} />
         <Route path="/invoices" element={<InvoiceList />} />

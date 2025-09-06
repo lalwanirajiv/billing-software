@@ -16,16 +16,16 @@ export const getItemsByInvoiceId = async (req, res) => {
 // --- Create single item (optional) ---
 export const createItem = async (req, res) => {
   try {
-    const { invoice_id, item_name, quantity, price, total } = req.body;
+    const { invoice_id, item_name, hsn, quantity, price, total } = req.body;
 
     if (!invoice_id)
       return res.status(400).json({ error: "Invoice ID is required" });
 
     const [item] = await sql`
       INSERT INTO items
-      (invoice_id, item_name, quantity, price, total)
+      (invoice_id, item_name,hsn, quantity, price, total)
       VALUES
-      (${invoice_id}, ${item_name}, ${quantity}, ${price}, ${total})
+      (${invoice_id}, ${item_name},${hsn}, ${quantity}, ${price}, ${total})
       RETURNING *
     `;
 
