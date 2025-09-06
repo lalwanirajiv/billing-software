@@ -66,12 +66,13 @@ export default function Invoice() {
       navigate("/invoice-form");
     }
   };
+  console.log(invoiceData);
+  
 
   const handleSave = async () => {
     if (!invoiceData) return;
     setIsSaving(true);
     setToast({ message: "", type: "" });
-
     try {
       // 1. Check duplicate bill number
       const checkResponse = await fetch(
@@ -101,7 +102,6 @@ export default function Invoice() {
         }
       } catch {}
 
-      // 3. Prepare invoice payload
       const invoicePayload = {
         customer_id: customerId,
         ship_to: invoiceData.shipTo,
@@ -192,6 +192,8 @@ export default function Invoice() {
           handleEdit={handleEdit}
           hideSave={hideSave}
           isSaving={isSaving}
+          invoice_id={invoiceData.invoice_id}
+          status={invoiceData.invoice_status}
         />
 
         <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg">

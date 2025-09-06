@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom"; 
+import { Link, useNavigate } from "react-router-dom";
 import {
   DeleteIcon,
   AlertTriangleIcon,
@@ -219,6 +219,9 @@ export default function InvoiceList() {
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
                     Amount
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
+                    Status
+                  </th>
                   <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
                     Actions
                   </th>
@@ -248,6 +251,27 @@ export default function InvoiceList() {
                     <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
                       ₹{Number(invoice.grand_total).toFixed(2)}
                     </td>
+                    <td className="px-6 py-4 font-medium">
+                      {invoice.invoice_status ? (
+                        <span
+                          className={`px-2 py-1 rounded-full text-sm font-semibold
+        ${
+          invoice.invoice_status.toLowerCase() === "paid"
+            ? "text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-900/50"
+            : invoice.invoice_status.toLowerCase() === "due"
+            ? "text-yellow-700 bg-yellow-100 dark:text-yellow-300 dark:bg-yellow-900/50"
+            : invoice.invoice_status.toLowerCase() === "overdue"
+            ? "text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900/50"
+            : "text-gray-700 bg-gray-100 dark:text-gray-300 dark:bg-gray-700/50"
+        }`}
+                        >
+                          {invoice.invoice_status}
+                        </span>
+                      ) : (
+                        "N/A"
+                      )}
+                    </td>
+
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end space-x-3">
                         <button
