@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import SellerDetails from "./SellerDetails";
 import InvoiceMeta from "./InvoiceMeta";
@@ -22,29 +22,50 @@ const formatDateToDDMMYYYY = (dateString) => {
 
 export default function Invoice() {
   const navigate = useNavigate();
-
+  const params = useParams();
   const [invoiceData, setInvoiceData] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState({ message: "", type: "" });
 
-  // --- Load Data from localStorage (invoice draft) ---
-  useEffect(() => {
-    const savedData = localStorage.getItem("invoiceData");
-    if (savedData) setInvoiceData(JSON.parse(savedData));
-  }, []);
+  // --- Fetch Invoice ---
+  const fetchInvoice = async (id) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/invoices/${id}`);
+      if (!res.ok) throw new Error("Failed to fetch invoice.");
+      const data = await res.json();
+      setInvoiceData(data);
+    } catch (err) {
+      setToast({
+        message: `Error fetching invoice: ${err.message}`,
+        type: "error",
+      });
+    }
+  };
 
-  // --- Auto-hide Toast ---
+  useEffect(() => {
+    if (params.id) {
+      fetchInvoice(params.id);
+    } else {
+      const savedData = localStorage.getItem("invoiceData");
+      if (savedData) setInvoiceData(JSON.parse(savedData));
+    }
+  }, [params.id]);
+
   useEffect(() => {
     if (toast.message) {
-      const timer = setTimeout(() => {
-        setToast({ message: "", type: "" });
-      }, 4000);
+      const timer = setTimeout(() => setToast({ message: "", type: "" }), 4000);
       return () => clearTimeout(timer);
     }
   }, [toast]);
 
   // --- Handlers ---
-  const handleEdit = () => navigate("/invoice-form");
+  const handleEdit = () => {
+    if (params.id) {
+      navigate(`/invoice-form/${params.id}`);
+    } else {
+      navigate("/invoice-form");
+    }
+  };
 
   const handleSave = async () => {
     if (!invoiceData) return;
@@ -52,30 +73,48 @@ export default function Invoice() {
     setToast({ message: "", type: "" });
 
     try {
-      // 1. Check for duplicate bill number
+      // 1. Check duplicate bill number
       const checkResponse = await fetch(
         `http://localhost:5000/api/invoices/check/${invoiceData.billNo}`
       );
       if (checkResponse.ok) {
         const { exists } = await checkResponse.json();
-        if (exists) {
+        if (exists)
           throw new Error(
-            `Invoice with Bill Number #${invoiceData.billNo} already exists.`
+            `Invoice with Bill #${invoiceData.billNo} already exists.`
           );
-        }
       } else {
         throw new Error("Could not verify bill number uniqueness.");
       }
 
-      // 2. Prepare & Save Invoice
+      // 2. Get customer ID
+      let customerId = null;
+      try {
+        const customerRes = await fetch(
+          `http://localhost:5000/api/customer/search?name=${encodeURIComponent(
+            invoiceData.shipTo
+          )}`
+        );
+        if (customerRes.ok) {
+          const customer = await customerRes.json();
+          if (customer && customer.length) customerId = customer[0].customer_id;
+        }
+      } catch {}
+
+      // 3. Prepare invoice payload
       const invoicePayload = {
-        customer_id: invoiceData.customerId,
+        customer_id: customerId,
         ship_to: invoiceData.shipTo,
         bill_no: Number(invoiceData.billNo),
         date: invoiceData.date,
         terms_of_payment: invoiceData.terms,
+        total_quantity: invoiceData.totalQty || 0,
+        sub_total: invoiceData.sub_total || 0,
+        cgst: invoiceData.cgst || 0,
+        sgst: invoiceData.sgst || 0,
+        igst: invoiceData.igst || 0,
         state: invoiceData.state,
-        grand_total: invoiceData.roundedTotal,
+        grand_total: invoiceData.grand_total || 0,
         created_at: new Date().toISOString(),
       };
 
@@ -90,23 +129,23 @@ export default function Invoice() {
 
       if (!invoiceResponse.ok) {
         const errorText = await invoiceResponse.text();
-        throw new Error(`Failed to save invoice. Server: ${errorText}`);
+        throw new Error(`Failed to save invoice: ${errorText}`);
       }
 
       const savedInvoice = await invoiceResponse.json();
       const invoiceId =
         savedInvoice.invoiceId || savedInvoice.invoice_id || savedInvoice.id;
+      if (!invoiceId) throw new Error("Invoice ID missing in response.");
 
-      if (!invoiceId) throw new Error("Invoice ID missing in response");
-
-      // 3. Save Items
+      // 4. Save items
       for (const item of invoiceData.items) {
         const itemPayload = {
           invoice_id: invoiceId,
-          item_name: item.name,
-          quantity: item.qty,
-          price: item.rate,
-          total: item.amount,
+          item_name: item.name || item.item_name,
+          hsn: item.hsn,
+          quantity: item.qty || item.quantity,
+          price: item.rate || item.price,
+          total: item.amount || item.total,
         };
 
         const itemResponse = await fetch("http://localhost:5000/api/items", {
@@ -115,14 +154,13 @@ export default function Invoice() {
           body: JSON.stringify(itemPayload),
         });
 
-        if (!itemResponse.ok) {
-          throw new Error(`Failed to save invoice item: ${item.name}.`);
-        }
+        if (!itemResponse.ok)
+          throw new Error(`Failed to save item: ${item.name}`);
       }
 
       setToast({ message: "Invoice Saved Successfully!", type: "success" });
+      localStorage.removeItem("invoiceData");
     } catch (error) {
-      console.error("Save failed:", error);
       setToast({ message: `Error: ${error.message}`, type: "error" });
     } finally {
       setIsSaving(false);
@@ -137,6 +175,7 @@ export default function Invoice() {
       </div>
     );
   }
+  const hideSave = !!params.id;
 
   // --- Render ---
   return (
@@ -151,6 +190,7 @@ export default function Invoice() {
         <InvoiceHeader
           handleSave={handleSave}
           handleEdit={handleEdit}
+          hideSave={hideSave}
           isSaving={isSaving}
         />
 
@@ -172,12 +212,7 @@ export default function Invoice() {
                 date: formatDateToDDMMYYYY(invoiceData.date),
               }}
             />
-
-            <InvoiceItemsTable
-              items={invoiceData.items}
-              totalQty={invoiceData.totalQty}
-              subTotal={invoiceData.subTotal}
-            />
+            <InvoiceItemsTable data={invoiceData} />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
               <SellerBankDetails data={invoiceData} />

@@ -1,5 +1,6 @@
 import sql from "../db.js";
 
+// ------------------ CREATE CUSTOMER ------------------
 export const createCustomer = async (req, res) => {
   try {
     const { name, address_line1, address_line2, gstin, phone } = req.body;
@@ -23,15 +24,15 @@ export const createCustomer = async (req, res) => {
 
     res.json({
       message: "Customer created successfully!",
-      customerId: customer.id,
+      customerId: customer.customer_id,
     });
   } catch (err) {
-    console.error("Error creating customer:", err);
+    console.error("❌ Error creating customer:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-// Get all customers
+// ------------------ GET ALL CUSTOMERS ------------------
 export const getAllCustomers = async (req, res) => {
   try {
     const customers = await sql`
@@ -41,33 +42,57 @@ export const getAllCustomers = async (req, res) => {
     `;
     res.json(customers);
   } catch (err) {
-    console.error("Error fetching customers:", err);
+    console.error("❌ Error fetching customers:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-// Get customer by ID
+// ------------------ GET CUSTOMER BY ID ------------------
 export const getCustomerById = async (req, res) => {
   try {
     const { id } = req.params;
     const [customer] = await sql`
       SELECT * FROM customers 
-      WHERE id = ${id} AND is_deleted = FALSE
+      WHERE customer_id = ${id} AND is_deleted = FALSE
     `;
     if (!customer) return res.status(404).json({ error: "Customer not found" });
     res.json(customer);
   } catch (err) {
-    console.error("Error fetching customer:", err);
+    console.error("❌ Error fetching customer:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-// Soft delete customer
+// ------------------ GET CUSTOMER ID BY NAME ------------------
+export const getIdByName = async (req, res) => {
+  try {
+    const { name } = req.query; // ?name=Rahul
+    if (!name || name.trim() === "") {
+      return res
+        .status(400)
+        .json({ error: "Name query parameter is required" });
+    }
+
+    const customers = await sql`
+      SELECT * FROM customers
+      WHERE name ILIKE ${"%" + name + "%"} AND is_deleted = FALSE
+    `;
+
+    if (customers.length === 0)
+      return res.status(404).json({ error: "Customer not found" });
+
+    res.json(customers);
+  } catch (err) {
+    console.error("❌ Error fetching customer by name:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ------------------ SOFT DELETE CUSTOMER ------------------
 export const deleteCustomer = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("This is ID: ",id);
-    
+
     const [customer] = await sql`
       UPDATE customers 
       SET is_deleted = TRUE, deleted_at = NOW()
@@ -83,7 +108,7 @@ export const deleteCustomer = async (req, res) => {
 
     res.json({ message: "Customer deleted successfully!", customer });
   } catch (err) {
-    console.error("Error deleting customer:", err);
+    console.error("❌ Error deleting customer:", err);
     res.status(500).json({ error: err.message });
   }
 };

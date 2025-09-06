@@ -20,13 +20,13 @@ export default function InvoiceForm() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState(initialFormData);
   const [totals, setTotals] = useState({
-    subTotal: 0,
+    sub_total: 0,
     totalQty: 0,
     cgst: 0,
     sgst: 0,
     igst: 0,
     adjustment: 0,
-    roundedTotal: 0,
+    grand_total: 0,
   });
   const [customers, setCustomers] = useState([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
@@ -114,7 +114,7 @@ export default function InvoiceForm() {
 
   // --- Totals Calculation ---
   useEffect(() => {
-    const subTotal = formData.items.reduce(
+    const sub_total = formData.items.reduce(
       (acc, item) => acc + (item.amount || 0),
       0
     );
@@ -128,25 +128,25 @@ export default function InvoiceForm() {
       igst = 0;
 
     if (formData.state.toLowerCase() === "interstate") {
-      igst = subTotal * 0.05;
+      igst = sub_total * 0.05;
     } else {
-      cgst = subTotal * 0.025;
-      sgst = subTotal * 0.025;
+      cgst = sub_total * 0.025;
+      sgst = sub_total * 0.025;
     }
 
-    const totalAmount = subTotal + cgst + sgst + igst;
-    const roundedTotal = Math.round(totalAmount);
-    const adjustment = roundedTotal - totalAmount;
+    const totalAmount = sub_total + cgst + sgst + igst;
+    const grand_total = Math.round(totalAmount);
+    const adjustment = grand_total - totalAmount;
 
     setTotals({
-      subTotal,
+      sub_total,
       totalQty,
       cgst,
       sgst,
       igst,
       totalAmount,
       adjustment,
-      roundedTotal,
+      grand_total,
     });
   }, [formData.items, formData.state]);
 

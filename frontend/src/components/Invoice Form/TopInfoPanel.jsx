@@ -4,7 +4,6 @@ const TopInfoPanel = ({
   formData,
   handleChange,
   totals,
-  customers,
   handleSuggestionClick,
   isSuggestionsVisible,
   setIsSuggestionsVisible,
@@ -41,24 +40,30 @@ const TopInfoPanel = ({
             }
           />
           {isSuggestionsVisible && (
-            <ul className="absolute z-10 w-full bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+            <ul className="absolute z-10 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
               {filteredCustomers.length > 0 ? (
                 filteredCustomers.map((customer) => (
                   <li
                     key={customer.id}
                     onMouseDown={() => handleSuggestionClick(customer)}
-                    className="p-2 hover:bg-blue-500 hover:text-white dark:hover:bg-blue-600 cursor-pointer"
+                    className="p-2 text-gray-800 dark:text-gray-100 hover:bg-blue-500 hover:text-white dark:hover:bg-blue-600 cursor-pointer"
                   >
                     {customer.name}
                   </li>
                 ))
               ) : (
-                <li className="p-2 text-gray-500 dark:text-gray-400">
+                <li
+                  className="p-2 text-gray-500 dark:text-gray-400"
+                  key="no-customers-found"
+                >
                   No customers found.
                 </li>
               )}
               {/* Add New Customer Link */}
-              <li className="p-2 border-t border-gray-200 dark:border-gray-600">
+              <li
+                className="p-2 border-t border-gray-200 dark:border-gray-600"
+                key="add-new-customer"
+              >
                 <a
                   href="/create-customer"
                   className="text-blue-600 dark:text-blue-400 hover:underline text-sm font-semibold"
@@ -119,7 +124,7 @@ const TopInfoPanel = ({
           type="text"
           name="gstin"
           placeholder="Auto-populated"
-          value={formData.gstin}
+          value={formData.gstin || ""}
           readOnly
           className="w-full p-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-300"
         />
@@ -159,9 +164,9 @@ const TopInfoPanel = ({
           id="date"
           type="date"
           name="date"
-          value={formData.date}
+          value={formData.date || ""}
           onChange={handleChange}
-          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 [color-scheme:light] dark:[color-scheme:dark]"
         />
       </div>
       <div>
@@ -202,39 +207,51 @@ const TopInfoPanel = ({
     </div>
 
     {/* Total Panel */}
-    <div className="bg-gray-50 dark:bg-gray-800/50 p-5 rounded-lg border dark:border-gray-700 space-y-2 flex flex-col">
+    <div className="bg-gray-50 dark:bg-gray-800/50 p-5 rounded-lg border dark:border-gray-700 space-y-2 flex flex-col [color-scheme:light] dark:[color-scheme:dark]">
       <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">
         Total
       </h2>
+
       <div className="flex-grow space-y-2 text-sm">
         <div className="flex justify-between font-medium">
-          <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
-          <span className="dark:text-gray-200">
-            ₹{totals.subTotal.toFixed(2)}
+          <span className="text-gray-600 dark:text-gray-400">sub_total:</span>
+          <span className="text-gray-900 dark:text-gray-200">
+            ₹{totals.sub_total.toFixed(2)}
           </span>
         </div>
+
         <div className="flex justify-between">
           <span className="text-gray-600 dark:text-gray-400">CGST @2.5%:</span>
-          <span className="dark:text-gray-200">₹{totals.cgst.toFixed(2)}</span>
+          <span className="text-gray-900 dark:text-gray-200">
+            ₹{totals.cgst.toFixed(2)}
+          </span>
         </div>
+
         <div className="flex justify-between">
           <span className="text-gray-600 dark:text-gray-400">SGST @2.5%:</span>
-          <span className="dark:text-gray-200">₹{totals.sgst.toFixed(2)}</span>
+          <span className="text-gray-900 dark:text-gray-200">
+            ₹{totals.sgst.toFixed(2)}
+          </span>
         </div>
+
         <div className="flex justify-between">
           <span className="text-gray-600 dark:text-gray-400">IGST @5%:</span>
-          <span className="dark:text-gray-200">₹{totals.igst.toFixed(2)}</span>
+          <span className="text-gray-900 dark:text-gray-200">
+            ₹{totals.igst.toFixed(2)}
+          </span>
         </div>
+
         <div className="flex justify-between">
           <span className="text-gray-600 dark:text-gray-400">Adjustment:</span>
-          <span className="dark:text-gray-200">
+          <span className="text-gray-900 dark:text-gray-200">
             ₹{totals.adjustment.toFixed(2)}
           </span>
         </div>
       </div>
+
       <div className="flex justify-between text-2xl font-bold text-gray-900 dark:text-white border-t dark:border-gray-600 pt-2 mt-2">
         <span>Total:</span>
-        <span>₹{totals.roundedTotal.toFixed(2)}</span>
+        <span>₹{totals.grand_total.toFixed(2)}</span>
       </div>
     </div>
   </div>

@@ -9,8 +9,14 @@ export const createInvoice = async (req, res) => {
       date,
       terms_of_payment,
       state,
+      total_quantity,
+      sub_total,
+      cgst,
+      sgst,
+      igst,
       grand_total,
       items,
+      customer_id
     } = req.body;
 
     if (!ship_to || ship_to.trim() === "") {
@@ -21,23 +27,23 @@ export const createInvoice = async (req, res) => {
 
     // Insert invoice
     const [invoice] = await sql`
-      INSERT INTO invoices
-      (ship_to, bill_no, date, terms_of_payment, state, grand_total, created_at)
-      VALUES
-      (${ship_to}, ${bill_no}, ${date}, ${terms_of_payment}, ${state}, ${grand_total}, NOW())
-      RETURNING invoice_id
-    `;
+  INSERT INTO invoices
+  (ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, customer_id, created_at)
+  VALUES
+  (${ship_to}, ${bill_no}, ${date}, ${terms_of_payment}, ${state}, ${total_quantity}, ${sub_total}, ${cgst}, ${sgst}, ${igst}, ${grand_total},${customer_id}, NOW())
+  RETURNING invoice_id
+`;
     const invoiceId = invoice.invoice_id;
 
     // Insert items if any
     if (items && items.length > 0) {
       for (let item of items) {
-        const { item_name, quantity, price, total } = item;
+        const { item_name, hsn, quantity, price, total } = item;
         await sql`
           INSERT INTO items
-          (invoice_id, item_name, quantity, price, total)
+          (invoice_id, item_name, hsn, quantity, price, total)
           VALUES
-          (${invoiceId}, ${item_name}, ${quantity}, ${price}, ${total})
+          (${invoiceId}, ${item_name}, ${hsn},${quantity}, ${price}, ${total})
         `;
       }
     }
