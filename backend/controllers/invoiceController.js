@@ -199,3 +199,24 @@ export const updateInvoice = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const getRecentInvoices = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 5; // default 5 invoices
+
+    const invoices = await sql`
+      SELECT i.invoice_id, i.bill_no, i.date, i.grand_total, i.invoice_status,
+             c.name AS customer_name
+      FROM invoices i
+      LEFT JOIN customers c ON i.customer_id = c.customer_id
+      WHERE i.invoice_status IS NOT NULL
+      ORDER BY i.created_at DESC
+      LIMIT ${limit}
+    `;
+
+    res.json(invoices);
+  } catch (err) {
+    console.error("Error fetching recent invoices:", err);
+    res.status(500).json({ error: err.message });
+  }
+};

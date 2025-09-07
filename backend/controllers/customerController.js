@@ -112,3 +112,22 @@ export const deleteCustomer = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const getTopCustomers = async (req, res) => {
+  const limit = parseInt(req.query.limit) || 5; 
+  try {
+    const customers = await sql`
+      SELECT c.customer_id, c.name AS customer_name,
+             SUM(i.grand_total::numeric) AS total_revenue
+      FROM customers c
+      JOIN invoices i ON c.customer_id = i.customer_id
+      GROUP BY c.customer_id, c.name
+      ORDER BY total_revenue DESC
+      LIMIT ${limit}
+    `;
+    res.json(customers);
+  } catch (err) {
+    console.error("Error fetching top customers:", err);
+    res.status(500).json({ error: "Failed to fetch top customers" });
+  }
+};
