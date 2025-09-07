@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+
 import TopInfoPanel from "./TopInfoPanel";
 import ItemsList from "./ItemsList";
 import FormHeader from "./FormHeader";
+import ConfirmSaveModal from "../Reusables/ConfirmSaveModal";
+
+import { useToast } from "../../context/ToastContext"; // ✅ Global toast
 
 const initialFormData = {
   shipTo: "",
@@ -18,7 +22,10 @@ const initialFormData = {
 
 export default function InvoiceForm() {
   const navigate = useNavigate();
+  const { showToast } = useToast(); // ✅ global toast hook
+
   const [formData, setFormData] = useState(initialFormData);
+  const [showConfirmSave, setShowConfirmSave] = useState(false);
   const [totals, setTotals] = useState({
     sub_total: 0,
     totalQty: 0,
@@ -41,13 +48,13 @@ export default function InvoiceForm() {
         const data = await response.json();
         setCustomers(data);
       } catch (error) {
-        console.error("Failed to fetch customers:", error);
+        showToast("Failed to fetch customers", "error");
       } finally {
         setIsLoadingCustomers(false);
       }
     };
     fetchCustomers();
-  }, []);
+  }, [showToast]);
 
   // --- Load Existing Invoice Draft ---
   useEffect(() => {
@@ -83,6 +90,20 @@ export default function InvoiceForm() {
     setIsSuggestionsVisible(false);
   };
 
+  const handleSaveClick = (e) => {
+    e.preventDefault();
+    setShowConfirmSave(true);
+  };
+
+  const handleConfirmSave = async () => {
+    setShowConfirmSave(false);
+    await saveInvoice();
+  };
+
+  const handleCancelSave = () => {
+    setShowConfirmSave(false);
+  };
+
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
     const newItems = [...formData.items];
@@ -112,7 +133,7 @@ export default function InvoiceForm() {
     setFormData(initialFormData);
   };
 
-  // --- Totals Calculation ---
+  // --- Auto-calc totals ---
   useEffect(() => {
     const sub_total = formData.items.reduce(
       (acc, item) => acc + (item.amount || 0),
@@ -150,16 +171,89 @@ export default function InvoiceForm() {
     });
   }, [formData.items, formData.state]);
 
-  // --- Submit ---
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const dataToSave = {
-      ...formData,
-      ...totals,
-      terms: formData.terms?.trim() !== "" ? formData.terms : "30 Days",
-    };
-    localStorage.setItem("invoiceData", JSON.stringify(dataToSave));
-    navigate("/invoice");
+  // --- Save Logic ---
+  const saveInvoice = async () => {
+    try {
+      // 1. Check duplicate bill number
+      const checkRes = await fetch(
+        `http://localhost:5000/api/invoices/check/${formData.billNo}`
+      );
+      if (checkRes.ok) {
+        const { exists } = await checkRes.json();
+        if (exists) {
+          showToast(
+            `Invoice with Bill #${formData.billNo} already exists.`,
+            "error"
+          );
+          return;
+        }
+      }
+
+      // 2. Lookup customer_id
+      let customerId = null;
+      try {
+        const customerRes = await fetch(
+          `http://localhost:5000/api/customer/search?name=${encodeURIComponent(
+            formData.shipTo
+          )}`
+        );
+        if (customerRes.ok) {
+          const customer = await customerRes.json();
+          if (customer && customer.length) {
+            customerId = customer[0].customer_id;
+          }
+        }
+      } catch (err) {
+        console.warn("Customer lookup failed:", err);
+      }
+
+      // 3. Build payload
+      const payload = {
+        customer_id: customerId,
+        ship_to: formData.shipTo,
+        bill_no: Number(formData.billNo),
+        date: formData.date,
+        terms_of_payment:
+          formData.terms?.trim() !== "" ? formData.terms : "30 Days",
+        state: formData.state,
+        total_quantity: totals.totalQty,
+        sub_total: totals.sub_total,
+        cgst: totals.cgst,
+        sgst: totals.sgst,
+        igst: totals.igst,
+        grand_total: totals.grand_total,
+        items: (formData.items || []).map((item) => ({
+          item_name: item.name || item.item_name,
+          hsn: item.hsn,
+          quantity: item.qty || item.quantity,
+          price: item.rate || item.price,
+          total: item.amount || item.total,
+        })),
+      };
+
+      // 4. Save invoice
+      const response = await fetch("http://localhost:5000/api/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save invoice: ${response.statusText}`);
+      }
+
+      const savedInvoice = await response.json();
+      if (savedInvoice.invoiceId) {
+        localStorage.removeItem("invoiceData");
+        showToast("Invoice saved successfully!", "success");
+        navigate(`/invoice/${savedInvoice.invoiceId}`);
+      } else {
+        showToast("Invoice saved but ID missing in response", "warning");
+      }
+    } catch (error) {
+      console.error("Error saving invoice:", error);
+      showToast("Failed to save invoice. Please try again.", "error");
+    }
   };
 
   // --- Render ---
@@ -169,7 +263,7 @@ export default function InvoiceForm() {
         <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg">
           <FormHeader handleClear={handleClear} />
 
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSaveClick} className="space-y-8">
             <TopInfoPanel
               formData={formData}
               handleChange={handleChange}
@@ -196,6 +290,7 @@ export default function InvoiceForm() {
               addItem={addItem}
               removeItem={removeItem}
             />
+
             <div className="flex justify-end pt-4">
               <button
                 type="submit"
@@ -204,6 +299,12 @@ export default function InvoiceForm() {
                 Save & Preview Invoice
               </button>
             </div>
+
+            <ConfirmSaveModal
+              isOpen={showConfirmSave}
+              onCancel={handleCancelSave}
+              onConfirm={handleConfirmSave}
+            />
           </form>
         </div>
       </div>

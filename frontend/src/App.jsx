@@ -9,8 +9,9 @@ import CustomerList from "./components/List Of Customers/CustomerList";
 import InvoiceList from "./components/List of Invoices/InvoiceList";
 import Header from "./components/Header/Header";
 
+import { ToastProvider } from "./context/ToastContext"; // ✅ global toast
+
 function App() {
-  // Initialize theme from sessionStorage or system preference
   const [theme, setTheme] = useState(() => {
     const storedTheme = sessionStorage.getItem("theme");
     if (storedTheme) return storedTheme;
@@ -38,18 +39,20 @@ function App() {
 
   return (
     <Router>
-      <Header toggleTheme={toggleTheme} theme={theme} />
+      <ToastProvider>
+        <Header toggleTheme={toggleTheme} theme={theme} />
 
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/invoice" element={<Invoice />} />
-        <Route path="/invoice/:id" element={<Invoice />} />
-        <Route path="/invoice-form" element={<InvoiceForm />} />
-        <Route path="/invoice-form/:id" element={<InvoiceForm />} />
-        <Route path="/create-customer" element={<CustomerForm />} />
-        <Route path="/customers" element={<CustomerList />} />
-        <Route path="/invoices" element={<InvoiceList />} />
-      </Routes>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/invoice" element={<Invoice />} />
+          <Route path="/invoice/:id" element={<Invoice />} />
+          <Route path="/invoice-form" element={<InvoiceForm />} />
+          <Route path="/invoice-form/:id" element={<InvoiceForm />} />
+          <Route path="/create-customer" element={<CustomerForm />} />
+          <Route path="/customers" element={<CustomerList />} />
+          <Route path="/invoices" element={<InvoiceList />} />
+        </Routes>
+      </ToastProvider>
     </Router>
   );
 }
