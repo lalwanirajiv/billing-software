@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Check, ChevronDown } from "lucide-react";
-import axios from "axios";
 import { Toast } from "../Reusables/Toast"; // Import existing Toast
 
 const StatusDropdown = ({ status, invoiceId, onStatusUpdated }) => {
@@ -9,6 +8,7 @@ const StatusDropdown = ({ status, invoiceId, onStatusUpdated }) => {
   const [currentStatusValue, setCurrentStatusValue] = useState(status);
   const [loading, setLoading] = useState(false);
 
+  // Keep local state in sync if parent status changes
   useEffect(() => {
     setCurrentStatusValue(status);
   }, [status]);
@@ -33,44 +33,50 @@ const StatusDropdown = ({ status, invoiceId, onStatusUpdated }) => {
   const currentStatus =
     statuses.find(
       (s) => s.value.toLowerCase() === currentStatusValue?.toLowerCase()
-    ) || statuses[1];
+    ) || statuses[1]; // fallback: "Due"
 
-
+  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target))
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleStatusSelect = async (newStatus) => {
+    if (newStatus === currentStatusValue) {
+      return; // already selected
+    }
+
     setCurrentStatusValue(newStatus);
     setIsOpen(false);
     setLoading(true);
 
     try {
-      if (newStatus == status) {
-        return;
-      }
-      const res = await fetch(`http://localhost:5000/api/invoices/${invoiceId}/status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const res = await fetch(
+        `http://localhost:5000/api/invoices/${invoiceId}/status`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
 
       if (!res.ok) {
         throw new Error(`Failed to update status: ${res.statusText}`);
       }
 
-      onStatusUpdated(`Status updated to "${newStatus}"`, "success"); // show success toast
+      // Tell parent about success + updated status
+      onStatusUpdated(`Status updated to "${newStatus}"`, "success", newStatus);
     } catch (err) {
       console.error("Error updating status:", err);
-      onStatusUpdated("Failed to update status", "error"); // show error toast
-      setCurrentStatusValue(status); // revert previous value on failure
+      onStatusUpdated("Failed to update status", "error");
+
+      // revert to previous status if update fails
+      setCurrentStatusValue(status);
     } finally {
       setLoading(false);
     }
@@ -118,12 +124,15 @@ const InvoiceHeader = ({
   invoice_id,
 }) => {
   const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState("success"); // success or error
-  console.log("This is Invoice ID and Status ", invoice_id, status);
+  const [toastType, setToastType] = useState("success");
+  const [currentStatus, setCurrentStatus] = useState(status);
 
-  const handleStatusUpdated = (message, type) => {
+  const handleStatusUpdated = (message, type, updatedStatus) => {
     setToastMessage(message);
     setToastType(type);
+    if (updatedStatus) {
+      setCurrentStatus(updatedStatus); // update parent state
+    }
     setTimeout(() => setToastMessage(""), 3000);
   };
 
@@ -136,7 +145,7 @@ const InvoiceHeader = ({
           </h1>
           {hideSave && (
             <StatusDropdown
-              status={status}
+              status={currentStatus}
               invoiceId={invoice_id}
               onStatusUpdated={handleStatusUpdated}
             />

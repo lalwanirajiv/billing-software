@@ -81,7 +81,7 @@ const numberToWords = (num) => {
 };
 const SellerBankDetails = ({ data }) => {
   // Use the helper function to get the amount in words
-  const amountInWords = numberToWords(data.roundedTotal);
+  const amountInWords = numberToWords(data.grand_total);
 
   return (
     <div className="space-y-4">

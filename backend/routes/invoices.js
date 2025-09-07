@@ -6,6 +6,7 @@ import {
   getInvoicesWithCustomer,
   checkInvoice,
   updateStatus,
+  updateInvoice,
 } from "../controllers/invoiceController.js";
 
 const router = express.Router();
@@ -14,6 +15,7 @@ router.post("/", createInvoice);
 router.put("/:id/status", updateStatus);
 router.get("/:id", getInvoiceById);
 router.get("/", getAllInvoices);
+router.put("/:id", updateInvoice);
 router.get("/:id", getInvoicesWithCustomer);
 router.get("/check/:billNo", checkInvoice);
 

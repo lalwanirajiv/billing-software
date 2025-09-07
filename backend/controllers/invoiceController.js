@@ -75,7 +75,7 @@ export const getInvoiceById = async (req, res) => {
 // --- Get all invoices ---
 export const getAllInvoices = async (req, res) => {
   try {
-    const invoices = await sql`SELECT * FROM invoices ORDER BY created_at DESC`;
+    const invoices = await sql`SELECT * FROM invoices ORDER BY bill_no `;
     res.json(invoices);
   } catch (err) {
     console.error(err);
@@ -126,5 +126,76 @@ export const updateStatus = async (req, res) => {
   } catch (error) {
     console.error("Error updating status:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// --- Update Invoice by ID (with items) ---
+export const updateInvoice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      shipTo,
+      billNo,
+      date,
+      terms,
+      state,
+      totalQty,
+      sub_total,
+      cgst,
+      sgst,
+      igst,
+      totalAmount,
+      grand_total,
+      items,
+      customer_id,
+    } = req.body;
+    
+    console.log("Update Invoice Body:", req.body);
+
+    const [updatedInvoice] = await sql`
+      UPDATE invoices
+      SET ship_to = ${shipTo},
+          bill_no = ${billNo},
+          date = ${date},
+          terms_of_payment = ${terms},
+          state = ${state},
+          total_quantity = ${totalQty},
+          sub_total = ${sub_total},
+          cgst = ${cgst},
+          sgst = ${sgst},
+          igst = ${igst},
+          grand_total = ${
+            grand_total ?? totalAmount
+          }, -- pick whichever is available
+          customer_id = ${customer_id}
+      WHERE invoice_id = ${id}
+      RETURNING *
+    `;
+
+    if (!updatedInvoice) {
+      return res.status(404).json({ error: "Invoice not found" });
+    }
+
+    // Remove old items
+    await sql`DELETE FROM items WHERE invoice_id = ${id}`;
+
+    // Insert updated items
+    if (items && items.length > 0) {
+      for (let item of items) {
+        const { name, hsn, qty, rate, amount } = item;
+        await sql`
+          INSERT INTO items (invoice_id, item_name, hsn, quantity, price, total)
+          VALUES (${id}, ${name}, ${hsn}, ${qty}, ${rate}, ${amount})
+        `;
+      }
+    }
+
+    res.json({
+      message: "Invoice updated successfully!",
+      invoice: updatedInvoice,
+    });
+  } catch (err) {
+    console.error("Update Invoice Error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
