@@ -5,10 +5,9 @@ import dotenv from "dotenv";
 // Import routes
 import invoiceRoutes from "./routes/invoices.js";
 import itemRoutes from "./routes/items.js";
-import customerRoutes from "./routes/customer.js"
-
+import customerRoutes from "./routes/customer.js";
+import statsRoute from "./routes/stats.js";
 dotenv.config();
-
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,6 +20,7 @@ app.use(express.json()); // Parse JSON bodies
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/items", itemRoutes);
 app.use("/api/customer", customerRoutes);
+app.use("/api/stats", statsRoute);
 
 // --- Default route ---
 app.get("/", (req, res) => {
