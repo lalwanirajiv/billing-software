@@ -119,26 +119,40 @@ const Header = ({ toggleTheme, theme }) => {
           </div>
 
           {/* Theme Toggle + Mobile Menu */}
-          <div className="flex items-center">
-            <div className="hidden md:block">
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                aria-label="Toggle theme"
-              >
-                {theme === "light" ? <MoonIcon /> : <SunIcon />}
-              </button>
-            </div>
+          <div className="flex items-center space-x-2">
+            {/* Theme Toggle */}
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={toggleTheme}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") toggleTheme();
+              }}
+              className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 cursor-pointer transition-colors inline-flex items-center justify-center"
+              aria-label="Toggle theme"
+            >
+              {theme === "light" ? <MoonIcon /> : <SunIcon />}
+            </span>
 
             {/* Mobile hamburger */}
-            <div className="md:hidden">
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                {isMobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
-              </button>
-            </div>
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  setIsMobileMenuOpen(!isMobileMenuOpen);
+                }
+              }}
+              className="p-2 rounded-full text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors shadow-sm cursor-pointer inline-flex items-center justify-center md:hidden"
+              aria-label="Toggle mobile menu"
+            >
+              {isMobileMenuOpen ? (
+                <CloseIcon className="w-6 h-6" />
+              ) : (
+                <MenuIcon className="w-6 h-6" />
+              )}
+            </span>
           </div>
         </div>
 

@@ -20,9 +20,7 @@ export default function CustomerList() {
     const fetchCustomers = async () => {
       try {
         const response = await fetch("http://localhost:5000/api/customer");
-        if (!response.ok) {
-          throw new Error("Failed to fetch customers.");
-        }
+        if (!response.ok) throw new Error("Failed to fetch customers.");
         const data = await response.json();
         setCustomers(data);
         setFilteredCustomers(data);
@@ -45,9 +43,7 @@ export default function CustomerList() {
 
   useEffect(() => {
     if (toastMessage) {
-      const timer = setTimeout(() => {
-        setToastMessage("");
-      }, 3000);
+      const timer = setTimeout(() => setToastMessage(""), 3000);
       return () => clearTimeout(timer);
     }
   }, [toastMessage]);
@@ -70,14 +66,9 @@ export default function CustomerList() {
     try {
       const response = await fetch(
         `http://localhost:5000/api/customer/${customerId}`,
-        {
-          method: "DELETE",
-        }
+        { method: "DELETE" }
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to delete customer");
-      }
+      if (!response.ok) throw new Error("Failed to delete customer");
 
       setCustomers(customers.filter((c) => c.customer_id !== customerId));
       setToastMessage(
@@ -85,7 +76,7 @@ export default function CustomerList() {
       );
     } catch (err) {
       console.error("Error deleting customer:", err);
-      setToastMessage(`Error: Failed to delete customer.`);
+      setToastMessage("Error: Failed to delete customer.");
     } finally {
       handleCloseModal();
     }
@@ -108,6 +99,7 @@ export default function CustomerList() {
       <Toast message={toastMessage} onClose={() => setToastMessage("")} />
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        {/* Header & Search */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             All Customers
@@ -134,6 +126,7 @@ export default function CustomerList() {
           </div>
         </div>
 
+        {/* No customers */}
         {filteredCustomers.length === 0 ? (
           <div className="text-center py-16 px-6 bg-white dark:bg-gray-800 rounded-lg shadow">
             <h2 className="text-xl font-medium text-gray-800 dark:text-gray-200">
@@ -154,93 +147,94 @@ export default function CustomerList() {
             </p>
           </div>
         ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          // Table wrapper with responsive scroll
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto sm:overflow-x-visible">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-auto">
               <thead className="bg-gray-50 dark:bg-gray-700/50">
                 <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     S.No.
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Customer Name
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Address
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Phone
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     GSTIN
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
+                  <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
+
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredCustomers.map((customer) => (
                   <tr
                     key={customer.customer_id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {customers.findIndex(
                         (c) => c.customer_id === customer.customer_id
                       ) + 1}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+
+                    <td className="px-3 py-2 whitespace-nowrap">
                       <div className="text-sm font-semibold text-gray-900 dark:text-white">
                         {customer.name}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600 dark:text-gray-300">
-                        {customer.address_line1}
+
+                    {/* Truncated address */}
+                    <td className="px-3 py-2 whitespace-nowrap max-w-xs">
+                      <div className="text-sm text-gray-600 dark:text-gray-300 truncate">
+                        {customer.address_line1
+                          ? customer.address_line1.length > 10
+                            ? customer.address_line1.slice(0, 10) + "..."
+                            : customer.address_line1
+                          : ""}
                       </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {customer.address_line2}
+                      <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                        {customer.address_line2
+                          ? customer.address_line2.length > 10
+                            ? customer.address_line2.slice(0, 10) + "..."
+                            : customer.address_line2
+                          : ""}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600 dark:text-gray-300">
-                        {customer.phone_number}
-                      </div>
+
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                      {customer.phone_number}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600 dark:text-gray-300">
-                        {customer.gstin}
-                      </div>
+                    <td className="px-3 py-2 text-left whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                      {customer.gstin}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-left space-x-3">
-                        <button className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700">
-                          <EditIcon />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(customer)}
-                          className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400  hover:bg-gray-100 dark:hover:bg-gray-700"
+
+                    {/* Actions: edit/delete */}
+                    <td className="px-3 py-2 whitespace-nowrap text-left text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-2">
+                        <span
+                          onClick={() => {}}
+                          role="button"
+                          className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:border-blue-500 transition"
+                          title="Edit Customer"
                         >
-                          <TrashIcon />
-                        </button>
+                          <EditIcon className="w-4 h-4" />
+                        </span>
+                        <span
+                          onClick={() => handleDeleteClick(customer)}
+                          role="button"
+                          className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-red-600 hover:border-red-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-red-400 dark:hover:border-red-500 transition"
+                          title="Delete Customer"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </span>
                       </div>
                     </td>
                   </tr>

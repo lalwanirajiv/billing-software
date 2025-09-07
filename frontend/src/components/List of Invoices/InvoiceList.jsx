@@ -6,6 +6,7 @@ import {
   EditIcon,
   SearchIcon,
 } from "../Reusables/Icons";
+import { Calendar } from "lucide-react"; // ✅ custom calendar icon
 import { Toast } from "../Reusables/Toast";
 
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, billNo }) => {
@@ -43,7 +44,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, billNo }) => {
 };
 
 export default function InvoiceList() {
-  const navigate = useNavigate(); // Hook for navigation
+  const navigate = useNavigate();
   const [invoices, setInvoices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -108,7 +109,7 @@ export default function InvoiceList() {
   };
 
   const handleDeleteClick = (e, invoice) => {
-    e.stopPropagation(); // Prevent row click from firing
+    e.stopPropagation();
     setInvoiceToDelete(invoice);
     setIsDeleteModalOpen(true);
   };
@@ -153,12 +154,32 @@ export default function InvoiceList() {
             All Invoices
           </h1>
           <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-            <input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="px-4 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
-            />
+            {/* ✅ Custom calendar icon for date filter */}
+            <div className="relative">
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="pl-10 pr-4 py-2 border rounded-lg bg-white dark:bg-gray-800 
+               text-gray-900 dark:text-gray-100 
+               border-gray-300 dark:border-gray-600 
+               focus:ring-2 focus:ring-blue-500 
+               appearance-none 
+               [&::-webkit-calendar-picker-indicator]:opacity-0 
+               [&::-webkit-calendar-picker-indicator]:absolute 
+               [&::-webkit-calendar-picker-indicator]:inset-0 
+               [&::-webkit-calendar-picker-indicator]:w-full 
+               [&::-webkit-calendar-picker-indicator]:h-full 
+               [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+              />
+              <Calendar
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 
+               text-gray-500 dark:text-gray-400 pointer-events-none"
+                size={18}
+              />
+            </div>
+
+            {/* Search bar */}
             <div className="relative w-full sm:w-64">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <SearchIcon />
@@ -168,9 +189,14 @@ export default function InvoiceList() {
                 placeholder="Search invoices..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white dark:bg-gray-800 
+                           text-gray-900 dark:text-gray-100 
+                           border-gray-300 dark:border-gray-600 
+                           focus:ring-2 focus:ring-blue-500"
               />
             </div>
+
+            {/* Add Invoice */}
             <Link
               to="/invoice-form"
               className="px-4 py-2 bg-blue-600 text-white rounded-lg text-center hover:bg-blue-700"
@@ -180,6 +206,7 @@ export default function InvoiceList() {
           </div>
         </div>
 
+        {/* Invoice Table */}
         {filteredInvoices.length === 0 ? (
           <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-lg shadow">
             <h2 className="text-xl font-medium text-gray-800 dark:text-gray-200">
@@ -254,15 +281,15 @@ export default function InvoiceList() {
                     <td className="px-6 py-4 font-medium">
                       {invoice.invoice_status ? (
                         <span
-                          className={`px-2 py-1 rounded-full text-sm font-semibold
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border
         ${
           invoice.invoice_status.toLowerCase() === "paid"
-            ? "text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-900/50"
+            ? "text-green-700 bg-green-50 border-green-200 dark:text-green-300 dark:bg-green-900/30 dark:border-green-700"
             : invoice.invoice_status.toLowerCase() === "due"
-            ? "text-yellow-700 bg-yellow-100 dark:text-yellow-300 dark:bg-yellow-900/50"
+            ? "text-yellow-700 bg-yellow-50 border-yellow-200 dark:text-yellow-300 dark:bg-yellow-900/30 dark:border-yellow-700"
             : invoice.invoice_status.toLowerCase() === "overdue"
-            ? "text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900/50"
-            : "text-gray-700 bg-gray-100 dark:text-gray-300 dark:bg-gray-700/50"
+            ? "text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-900/30 dark:border-red-700"
+            : "text-gray-700 bg-gray-50 border-gray-200 dark:text-gray-300 dark:bg-gray-700/30 dark:border-gray-600"
         }`}
                         >
                           {invoice.invoice_status}
@@ -272,23 +299,29 @@ export default function InvoiceList() {
                       )}
                     </td>
 
+                    {/* ✅ Edit/Delete as spans */}
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end space-x-3">
-                        <button
+                      <div className="flex items-center justify-end space-x-2">
+                        <span
                           onClick={(e) => {
                             e.stopPropagation();
                             handleRowClick(invoice.invoice_id);
                           }}
-                          className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition"
+                          role="button"
+                          className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:border-blue-500 transition"
+                          title="Edit Invoice"
                         >
-                          <EditIcon />
-                        </button>
-                        <button
+                          <EditIcon className="w-4 h-4" />
+                        </span>
+
+                        <span
                           onClick={(e) => handleDeleteClick(e, invoice)}
-                          className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition"
+                          role="button"
+                          className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-red-600 hover:border-red-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-red-400 dark:hover:border-red-500 transition"
+                          title="Delete Invoice"
                         >
-                          <DeleteIcon />
-                        </button>
+                          <DeleteIcon className="w-4 h-4" />
+                        </span>
                       </div>
                     </td>
                   </tr>
