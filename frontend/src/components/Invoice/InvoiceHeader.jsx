@@ -17,7 +17,7 @@ const StatusDropdown = ({ status, invoiceId, onStatusUpdated }) => {
     {
       value: "Paid",
       color:
-        "text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-900/50",
+        "text-grey-700 bg-green-100 dark:text-green-300 dark:bg-green-900/50",
     },
     {
       value: "Due",
@@ -96,19 +96,26 @@ const StatusDropdown = ({ status, invoiceId, onStatusUpdated }) => {
       </button>
 
       {isOpen && !loading && (
-        <div className="absolute mt-2 w-36 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-10 border border-gray-200 dark:border-gray-700">
-          {statuses.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => handleStatusSelect(s.value)}
-              className="w-full text-left flex items-center justify-between px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <span>{s.value}</span>
-              {currentStatus.value === s.value && (
-                <Check className="h-4 w-4 text-blue-600" />
-              )}
-            </button>
-          ))}
+        <div className="absolute mt-2 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-10 border border-gray-200 dark:border-gray-700">
+          {statuses.map((s) => {
+            const isActive = currentStatus.value === s.value;
+            return (
+              <button
+                key={s.value}
+                onClick={() => handleStatusSelect(s.value)}
+                className={`w-full flex items-center justify-between px-4 py-2 text-sm rounded-md
+            bg-white text-gray-800 
+            hover:bg-gray-100 
+            dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700
+            ${isActive ? "font-semibold bg-gray-50 dark:bg-gray-700/50" : ""}`}
+              >
+                <span>{s.value}</span>
+                {isActive && (
+                  <Check className={`h-4 w-4 ${s.color.split(" ")[0]}`} />
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
