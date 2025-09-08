@@ -4,10 +4,14 @@ import sql from "../db.js";
 export const getDashboardStats = async (req, res) => {
   try {
     // Current month totals (for revenue and overdue amounts)
-    const [totalRevenue] = await sql`
+    const [totalRevenueCurrentMonth] = await sql`
       SELECT SUM(grand_total) AS total_revenue 
       FROM invoices
       WHERE DATE_TRUNC('month', date) = DATE_TRUNC('month', CURRENT_DATE)
+    `;
+    const [totalRevenue] = await sql`
+      SELECT SUM(grand_total) AS total_revenue 
+      FROM invoices
     `;
 
     const [overdueAmount] = await sql`
@@ -62,9 +66,12 @@ export const getDashboardStats = async (req, res) => {
     };
 
     res.json({
-      totalRevenue: totalRevenue.total_revenue || 0,
+      totalRevenueCurrentMonth: totalRevenueCurrentMonth.total_revenue || 0,
       totalRevenueChange: Number(
-        calcChange(totalRevenue.total_revenue, prevTotalRevenue.total_revenue)
+        calcChange(
+          totalRevenueCurrentMonth.total_revenue,
+          prevTotalRevenue.total_revenue
+        )
       ),
 
       overdueAmount: overdueAmount.overdue_amount || 0,
@@ -77,7 +84,7 @@ export const getDashboardStats = async (req, res) => {
 
       invoicesDue: Number(invoicesDue.invoices_due) || 0,
       invoicesDueChange: null, // running total, % change not meaningful
-
+      totalRevenue : Number(totalRevenue.total_revenue) || 0,
       totalCustomers: Number(totalCustomers.total_customers) || 0,
       totalCustomersChange: Number(
         calcChange(

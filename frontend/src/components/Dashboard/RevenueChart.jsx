@@ -9,7 +9,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-
 import axios from "axios";
 
 const RevenueChart = () => {
@@ -18,19 +17,33 @@ const RevenueChart = () => {
   useEffect(() => {
     const fetchRevenue = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/invoices"); // replace with your API URL
+        const res = await axios.get("http://localhost:5000/api/invoices");
         const invoices = res.data;
         const revenueMap = {};
         invoices.forEach((inv) => {
           const month = new Date(inv.date).toLocaleString("default", {
             month: "short",
           });
-          revenueMap[month] = (revenueMap[month] || 0) + inv.grand_total;
+          revenueMap[month] =
+            (revenueMap[month] || 0) + Number(inv.grand_total);
         });
-
-        const chartData = Object.keys(revenueMap).map((month) => ({
+        const months = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+        const chartData = months.map((month) => ({
           name: month,
-          revenue: revenueMap[month],
+          revenue: revenueMap[month] || 0,
         }));
 
         setMonthlyRevenueData(chartData);
@@ -61,7 +74,7 @@ const RevenueChart = () => {
             dataKey="revenue"
             stroke="#3b82f6"
             strokeWidth={2}
-            activeDot={{ r: 8 }}
+            activeDot={{ r: 6 }}
           />
         </LineChart>
       </ResponsiveContainer>
