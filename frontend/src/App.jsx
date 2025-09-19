@@ -10,6 +10,7 @@ import InvoiceList from "./components/List of Invoices/InvoiceList";
 import Header from "./components/Header/Header";
 
 import { ToastProvider } from "./context/ToastContext"; // ✅ global toast
+import Reports from "./components/Reports/Reports";
 
 function App() {
   const [theme, setTheme] = useState(() => {
@@ -51,6 +52,7 @@ function App() {
           <Route path="/create-customer" element={<CustomerForm />} />
           <Route path="/customers" element={<CustomerList />} />
           <Route path="/invoices" element={<InvoiceList />} />
+          <Route path="/reports" element={<Reports />} />
         </Routes>
       </ToastProvider>
     </Router>
