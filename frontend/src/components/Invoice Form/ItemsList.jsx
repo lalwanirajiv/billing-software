@@ -78,7 +78,7 @@ const ItemsList = ({ items, handleItemChange, addItem, removeItem }) => (
             </label>
             <input
               type="number"
-              value={item.amount.toFixed(2)}
+              value={(item.amount ?? item.total ?? 0).toFixed(2)}
               readOnly
               className="w-full p-2 bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 rounded-md text-right text-gray-900 dark:text-gray-300"
             />
