@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { AppleIcon, Check, ChevronDown } from "lucide-react";
 import { Toast } from "../Reusables/Toast"; // Import existing Toast
+const API_URL = import.meta.env.VITE_API_URL;
 
 const StatusDropdown = ({ status, invoiceId, onStatusUpdated }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -57,7 +58,7 @@ const StatusDropdown = ({ status, invoiceId, onStatusUpdated }) => {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/api/invoices/${invoiceId}/status`,
+        `${API_URL}/api/invoices/${invoiceId}/status`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

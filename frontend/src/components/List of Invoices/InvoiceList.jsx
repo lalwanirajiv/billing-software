@@ -8,6 +8,7 @@ import {
 } from "../Reusables/Icons";
 import { Calendar } from "lucide-react"; // ✅ custom calendar icon
 import { Toast } from "../Reusables/Toast";
+const API_URL = import.meta.env.VITE_API_URL;
 
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, billNo }) => {
   if (!isOpen) return null;
@@ -67,7 +68,7 @@ export default function InvoiceList() {
   useEffect(() => {
     const fetchInvoices = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/invoices");
+        const res = await fetch(API_URL+"/api/invoices");
         if (!res.ok) throw new Error("Failed to fetch data.");
         const invoicesData = await res.json();
         setInvoices(invoicesData);
@@ -123,7 +124,7 @@ export default function InvoiceList() {
     if (!invoiceToDelete) return;
     try {
       const response = await fetch(
-        `http://localhost:5000/api/invoices/${invoiceToDelete.invoice_id}`,
+        `${API_URL}/api/invoices/${invoiceToDelete.invoice_id}`,
         { method: "DELETE" }
       );
       if (!response.ok) throw new Error("Failed to delete invoice");

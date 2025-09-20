@@ -1,23 +1,22 @@
 import React, { useEffect, useState } from "react";
+const API_URL = import.meta.env.VITE_API_URL;
 
 const ShipToDetails = ({ data }) => {
   const [customer, setCustomer] = useState(null);
 
-  // Fetch customer details when `data.customer_id` changes
   useEffect(() => {
     const getCustomer = async (customer_id) => {
       try {
         const getCustomerResponse = await fetch(
-          `http://localhost:5000/api/customer/${customer_id}`
+          `${API_URL}/api/customer/${customer_id}`
         );
-
+        
         if (!getCustomerResponse.ok) {
           throw new Error("Failed to fetch customer");
         }
 
         const customerData = await getCustomerResponse.json();
-        console.log("Fetched Customer:", customerData);
-        setCustomer(customerData); // ✅ store in state
+        setCustomer(customerData); 
       } catch (error) {
         console.error("Error fetching customer:", error);
       }

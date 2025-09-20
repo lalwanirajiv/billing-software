@@ -7,6 +7,7 @@ import FormHeader from "./FormHeader";
 import ConfirmSaveModal from "../Reusables/ConfirmSaveModal";
 
 import { useToast } from "../../context/ToastContext"; // ✅ Global toast
+const API_URL = import.meta.env.VITE_API_URL;
 
 const initialFormData = {
   shipTo: "",
@@ -43,7 +44,7 @@ export default function InvoiceForm() {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/customer");
+        const response = await fetch(API_URL+"/api/customer");
         if (!response.ok) throw new Error("Network response was not ok");
         const data = await response.json();
         setCustomers(data);
@@ -176,7 +177,7 @@ export default function InvoiceForm() {
     try {
       // 1. Check duplicate bill number
       const checkRes = await fetch(
-        `http://localhost:5000/api/invoices/check/${formData.billNo}`
+        `${API_URL}/api/invoices/check/${formData.billNo}`
       );
       if (checkRes.ok) {
         const { exists } = await checkRes.json();
@@ -193,7 +194,7 @@ export default function InvoiceForm() {
       let customerId = null;
       try {
         const customerRes = await fetch(
-          `http://localhost:5000/api/customer/search?name=${encodeURIComponent(
+          `${API_URL}/api/customer/search?name=${encodeURIComponent(
             formData.shipTo
           )}`
         );
@@ -232,7 +233,7 @@ export default function InvoiceForm() {
       };
 
       // 4. Save invoice
-      const response = await fetch("http://localhost:5000/api/invoices", {
+      const response = await fetch(API_URL+"/api/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

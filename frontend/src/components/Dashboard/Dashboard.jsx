@@ -7,6 +7,7 @@ import InvoiceStatusChart from "./InvoiceStatusChart";
 import RevenueChart from "./RevenueChart";
 import RecentInvoices from "./RecentInvoices";
 import axios from "axios";
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -18,7 +19,7 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/stats");
+        const res = await axios.get(API_URL+"/api/stats");
         setStats(res.data);
       } catch (err) {
         setError(err.message);

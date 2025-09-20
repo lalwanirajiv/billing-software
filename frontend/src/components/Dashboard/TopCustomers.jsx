@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+const API_URL = import.meta.env.VITE_API_URL;
 
 const TopCustomers = () => {
   const [topCustomers, setTopCustomers] = useState([]);
@@ -9,7 +10,7 @@ const TopCustomers = () => {
   useEffect(() => {
     const fetchTopCustomers = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/customer/top");
+        const res = await axios.get(API_URL+"/api/customer/top");
         setTopCustomers(res.data || []);
       } catch (err) {
         setError(err.message || "Failed to fetch top customers");

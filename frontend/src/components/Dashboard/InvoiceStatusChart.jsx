@@ -11,6 +11,7 @@ import {
 } from "recharts";
 
 const COLORS = ["#4ade80", "#f87171", "#fbbf24"]; // Paid: green, Overdue: red, Due: amber
+const API_URL = import.meta.env.VITE_API_URL;
 
 const InvoiceStatusChart = () => {
   const [data, setData] = useState([]);
@@ -21,7 +22,7 @@ const InvoiceStatusChart = () => {
     const fetchInvoiceStatus = async () => {
       try {
         const res = await axios.get(
-          "http://localhost:5000/api/stats/invoice-status"
+          API_URL+"/api/stats/invoice-status"
         );
         // API already returns [{ name, value }]
         setData(res.data);
