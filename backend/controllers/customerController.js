@@ -53,7 +53,7 @@ export const getCustomerById = async (req, res) => {
     const { id } = req.params;
     const [customer] = await sql`
       SELECT * FROM customers 
-      WHERE customer_id = ${id} AND is_deleted = FALSE
+      WHERE customer_id = ${id}
     `;
     if (!customer) return res.status(404).json({ error: "Customer not found" });
     res.json(customer);
@@ -66,7 +66,7 @@ export const getCustomerById = async (req, res) => {
 // ------------------ GET CUSTOMER ID BY NAME ------------------
 export const getIdByName = async (req, res) => {
   try {
-    const { name } = req.query; // ?name=Rahul
+    const { name } = req.query; 
     if (!name || name.trim() === "") {
       return res
         .status(400)

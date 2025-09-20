@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModel";
 import { Toast } from "../Reusables/Toast";
 import { EditIcon, TrashIcon, SearchIcon } from "../Reusables/Icons";
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function CustomerList() {
   const [customers, setCustomers] = useState([]);
@@ -19,7 +20,7 @@ export default function CustomerList() {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/customer");
+        const response = await fetch(API_URL+"/api/customer");
         if (!response.ok) throw new Error("Failed to fetch customers.");
         const data = await response.json();
         setCustomers(data);
@@ -65,7 +66,7 @@ export default function CustomerList() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/customer/${customerId}`,
+        `${API_URL}/api/customer/${customerId}`,
         { method: "DELETE" }
       );
       if (!response.ok) throw new Error("Failed to delete customer");

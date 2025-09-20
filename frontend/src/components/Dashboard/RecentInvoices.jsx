@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+const API_URL = import.meta.env.VITE_API_URL;
 
 const RecentInvoices = () => {
   const [invoices, setInvoices] = useState([]);
@@ -11,7 +12,7 @@ const RecentInvoices = () => {
     const fetchInvoices = async () => {
       try {
         const res = await axios.get(
-          "http://localhost:5000/api/invoices/recent"
+          API_URL+"/api/invoices/recent"
         );
         setInvoices(res.data || []); // Use raw array
       } catch (err) {
