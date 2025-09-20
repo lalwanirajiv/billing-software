@@ -44,3 +44,27 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Control page size and margins when printing */
+@media print {
+  @page {
+    size: A4;
+    margin: 20mm;   /* adds space from page borders */
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #print-section {
+    padding: 10mm;   /* internal padding inside the invoice box */
+    box-sizing: border-box;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
