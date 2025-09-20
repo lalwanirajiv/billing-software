@@ -144,6 +144,9 @@ const InvoiceHeader = ({
     setTimeout(() => setToastMessage(""), 3000);
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
   return (
     <>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
@@ -179,6 +182,12 @@ const InvoiceHeader = ({
             className="font-medium text-sm px-4 py-2 rounded-md transition-colors text-white bg-yellow-500 hover:bg-yellow-600"
           >
             Edit
+          </button>
+          <button
+            onClick={handlePrint}
+            className="font-medium text-sm px-4 py-2 rounded-md transition-colors text-white bg-blue-600 hover:bg-blue-700"
+          >
+            Print
           </button>
         </div>
       </div>
