@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import TopInfoPanel from "./TopInfoPanel";
 import ItemsList from "./ItemsList";
@@ -23,8 +23,8 @@ const initialFormData = {
 
 export default function InvoiceForm() {
   const navigate = useNavigate();
-  const { showToast } = useToast(); // ✅ global toast hook
-
+  const { showToast } = useToast();
+  const isExistingInvoice = useParams() ? true : false;
   const [formData, setFormData] = useState(initialFormData);
   const [showConfirmSave, setShowConfirmSave] = useState(false);
   const [totals, setTotals] = useState({
@@ -40,11 +40,10 @@ export default function InvoiceForm() {
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
   const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
 
-  // --- Load Customers ---
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const response = await fetch(API_URL+"/api/customer");
+        const response = await fetch(API_URL + "/api/customer");
         if (!response.ok) throw new Error("Network response was not ok");
         const data = await response.json();
         setCustomers(data);
@@ -57,23 +56,45 @@ export default function InvoiceForm() {
     fetchCustomers();
   }, [showToast]);
 
-  // --- Load Existing Invoice Draft ---
   useEffect(() => {
-    const existingData = localStorage.getItem("invoiceData");
+    const existingData = localStorage.getItem("invoice-data");
+    const existingCustomerData = localStorage.getItem("customer-data");
+
     if (existingData) {
       const parsedData = JSON.parse(existingData);
-      setFormData({
+      const parsedCustomer = existingCustomerData
+        ? JSON.parse(existingCustomerData)
+        : {};
+
+      const mergedData = {
         ...initialFormData,
         ...parsedData,
+        shipTo: parsedData.ship_to || parsedCustomer.name || "",
+        gstin: parsedCustomer.gstin || "N/A",
+        billNo: parsedData.bill_no || "",
+        address_line1: parsedCustomer.address_line1 || "N/A",
+        address_line2: parsedCustomer.address_line2 || "N/A",
+        date: parsedData.date
+          ? new Date(parsedData.date).toISOString().split("T")[0]
+          : "",
+
+        grand_total: parsedData.grand_total || 0,
         items:
           parsedData.items && parsedData.items.length
-            ? parsedData.items
+            ? parsedData.items.map((item) => ({
+                name: item.item_name || "",
+                hsn: item.hsn || "",
+                qty: Number(item.quantity) || 0,
+                rate: Number(item.price) || 0,
+                amount: Number(item.total) || 0,
+              }))
             : [{ name: "", hsn: "", qty: 0, rate: 0, amount: 0 }],
-      });
+      };
+
+      setFormData(mergedData);
     }
   }, []);
 
-  // --- Handlers ---
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -175,18 +196,20 @@ export default function InvoiceForm() {
   // --- Save Logic ---
   const saveInvoice = async () => {
     try {
-      // 1. Check duplicate bill number
-      const checkRes = await fetch(
-        `${API_URL}/api/invoices/check/${formData.billNo}`
-      );
-      if (checkRes.ok) {
-        const { exists } = await checkRes.json();
-        if (exists) {
-          showToast(
-            `Invoice with Bill #${formData.billNo} already exists.`,
-            "error"
-          );
-          return;
+      // 1. Check duplicate bill number (only for new invoices)
+      if (!isExistingInvoice) {
+        const checkRes = await fetch(
+          `${API_URL}/api/invoices/check/${formData.billNo}`
+        );
+        if (checkRes.ok) {
+          const { exists } = await checkRes.json();
+          if (exists) {
+            showToast(
+              `Invoice with Bill #${formData.billNo} already exists.`,
+              "error"
+            );
+            return;
+          }
         }
       }
 
@@ -232,22 +255,51 @@ export default function InvoiceForm() {
         })),
       };
 
-      // 4. Save invoice
-      const response = await fetch(API_URL+"/api/invoices", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      // 4. Save or Update invoice
+      let response;
+      console.log("This is IInvoice ID", formData.invoice_id);
+
+      if (isExistingInvoice && formData.invoice_id) {
+        // 🔄 Update existing invoice
+        response = await fetch(
+          `${API_URL}/api/invoices/${formData.invoice_id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
+      } else {
+        // 🆕 Save new invoice
+        response = await fetch(API_URL + "/api/invoices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
 
       if (!response.ok) {
         throw new Error(`Failed to save invoice: ${response.statusText}`);
       }
+      console.log("This is Saved Response ", response);
 
       const savedInvoice = await response.json();
-      if (savedInvoice.invoiceId) {
-        localStorage.removeItem("invoiceData");
-        showToast("Invoice saved successfully!", "success");
-        navigate(`/invoice/${savedInvoice.invoiceId}`);
+
+      const invoiceId =
+        savedInvoice.invoiceId || // when creating
+        savedInvoice.invoice_id || // in some APIs
+        (savedInvoice.invoice ? savedInvoice.invoice.invoice_id : null); // when updating
+
+      if (invoiceId) {
+        showToast(
+          isExistingInvoice
+            ? "Invoice updated successfully!"
+            : "Invoice saved successfully!",
+          "success"
+        );
+        navigate(`/invoice/${invoiceId}`);
+        localStorage.removeItem("invoice-data");
+        localStorage.removeItem("customer-data");
       } else {
         showToast("Invoice saved but ID missing in response", "warning");
       }
@@ -297,7 +349,9 @@ export default function InvoiceForm() {
                 type="submit"
                 className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors shadow-md"
               >
-                Save & Preview Invoice
+                {isExistingInvoice
+                  ? "Update Invoice"
+                  : "Save & Preview Invoice"}
               </button>
             </div>
 
@@ -305,6 +359,7 @@ export default function InvoiceForm() {
               isOpen={showConfirmSave}
               onCancel={handleCancelSave}
               onConfirm={handleConfirmSave}
+              isExistingInvoice={isExistingInvoice}
             />
           </form>
         </div>

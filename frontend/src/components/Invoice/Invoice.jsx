@@ -11,7 +11,7 @@ import ShipToDetails from "./ShipToDetails";
 import { useToast } from "../../context/ToastContext"; // ✅ use global toast
 const API_URL = import.meta.env.VITE_API_URL;
 
-// --- Utility: Format Date ---
+
 const formatDateToDDMMYYYY = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);
@@ -27,15 +27,16 @@ export default function Invoice() {
   const { showToast } = useToast(); // ✅ use global toast
   const [invoiceData, setInvoiceData] = useState(null);
 
-  // --- Fetch Invoice ---
   const fetchInvoice = async (id) => {
     try {
       const res = await fetch(`${API_URL}/api/invoices/${id}`);
       if (!res.ok) throw new Error("Failed to fetch invoice.");
       const data = await res.json();
       setInvoiceData(data);
+      console.log("THis is data",data);
+      localStorage.setItem("invoice-data",JSON.stringify(data));
     } catch (err) {
-      showToast(`Error fetching invoice: ${err.message}`, "error"); // ✅ global toast
+      showToast(`Error fetching invoice: ${err.message}`, "error"); 
     }
   };
 

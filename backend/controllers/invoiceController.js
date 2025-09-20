@@ -134,40 +134,39 @@ export const updateInvoice = async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      shipTo,
-      billNo,
+      ship_to,
+      bill_no,
       date,
-      terms,
+      terms_of_payment,
       state,
-      totalQty,
+      total_quantity,
       sub_total,
       cgst,
       sgst,
       igst,
-      totalAmount,
       grand_total,
       items,
       customer_id,
     } = req.body;
-    
+
     console.log("Update Invoice Body:", req.body);
 
+    // 1. Update invoice record
     const [updatedInvoice] = await sql`
       UPDATE invoices
-      SET ship_to = ${shipTo},
-          bill_no = ${billNo},
-          date = ${date},
-          terms_of_payment = ${terms},
+      SET ship_to = ${ship_to},
+          bill_no = ${bill_no},
+          date = ${date}::timestamp,
+          terms_of_payment = ${terms_of_payment},
           state = ${state},
-          total_quantity = ${totalQty},
+          total_quantity = ${total_quantity},
           sub_total = ${sub_total},
           cgst = ${cgst},
           sgst = ${sgst},
           igst = ${igst},
-          grand_total = ${
-            grand_total ?? totalAmount
-          }, -- pick whichever is available
-          customer_id = ${customer_id}
+          grand_total = ${grand_total},
+          customer_id = ${customer_id},
+          created_at = ${Date.now()}
       WHERE invoice_id = ${id}
       RETURNING *
     `;
@@ -176,16 +175,22 @@ export const updateInvoice = async (req, res) => {
       return res.status(404).json({ error: "Invoice not found" });
     }
 
-    // Remove old items
+    // 2. Remove old items
     await sql`DELETE FROM items WHERE invoice_id = ${id}`;
 
-    // Insert updated items
+    // 3. Insert updated items
     if (items && items.length > 0) {
       for (let item of items) {
-        const { name, hsn, qty, rate, amount } = item;
         await sql`
           INSERT INTO items (invoice_id, item_name, hsn, quantity, price, total)
-          VALUES (${id}, ${name}, ${hsn}, ${qty}, ${rate}, ${amount})
+          VALUES (
+            ${id},
+            ${item.item_name || item.name},
+            ${item.hsn},
+            ${item.quantity || item.qty},
+            ${item.price || item.rate},
+            ${item.total || item.amount}
+          )
         `;
       }
     }

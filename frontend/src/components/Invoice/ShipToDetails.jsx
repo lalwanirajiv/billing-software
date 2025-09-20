@@ -17,6 +17,7 @@ const ShipToDetails = ({ data }) => {
 
         const customerData = await getCustomerResponse.json();
         setCustomer(customerData); 
+        localStorage.setItem("customer-data",JSON.stringify(customerData));
       } catch (error) {
         console.error("Error fetching customer:", error);
       }
