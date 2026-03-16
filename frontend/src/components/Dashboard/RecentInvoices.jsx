@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getRecentInvoices } from "../../lib/api";
 
 const RecentInvoices = () => {
   const [invoices, setInvoices] = useState([]);
@@ -11,9 +10,7 @@ const RecentInvoices = () => {
   useEffect(() => {
     const fetchInvoices = async () => {
       try {
-        const res = await axios.get(
-          API_URL+"/api/invoices/recent"
-        );
+        const res = await getRecentInvoices();
         setInvoices(res.data || []); // Use raw array
       } catch (err) {
         setError(err.message || "Failed to fetch invoices");

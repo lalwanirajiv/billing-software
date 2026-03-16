@@ -9,16 +9,15 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import axios from "axios";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getAllInvoices } from "../../lib/api";
+
 const RevenueChart = () => {
   const [monthlyRevenueData, setMonthlyRevenueData] = useState([]);
 
   useEffect(() => {
     const fetchRevenue = async () => {
       try {
-        const res = await axios.get(API_URL+"/api/invoices");
-        const invoices = res.data;
+        const invoices = await getAllInvoices();
         const revenueMap = {};
         invoices.forEach((inv) => {
           const month = new Date(inv.date).toLocaleString("default", {

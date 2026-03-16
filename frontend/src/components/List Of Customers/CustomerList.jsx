@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModel";
 import { Toast } from "../Reusables/Toast";
 import { EditIcon, TrashIcon, SearchIcon } from "../Reusables/Icons";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getAllCustomers, deleteCustomer } from "../../lib/api";
 
 export default function CustomerList() {
+  const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,9 +21,7 @@ export default function CustomerList() {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const response = await fetch(API_URL+"/api/customer");
-        if (!response.ok) throw new Error("Failed to fetch customers.");
-        const data = await response.json();
+        const data = await getAllCustomers();
         setCustomers(data);
         setFilteredCustomers(data);
       } catch (err) {
@@ -65,11 +64,7 @@ export default function CustomerList() {
     const customerId = customerToDelete.customer_id;
 
     try {
-      const response = await fetch(
-        `${API_URL}/api/customer/${customerId}`,
-        { method: "DELETE" }
-      );
-      if (!response.ok) throw new Error("Failed to delete customer");
+      await deleteCustomer(customerId);
 
       setCustomers(customers.filter((c) => c.customer_id !== customerId));
       setToastMessage(
@@ -221,7 +216,7 @@ export default function CustomerList() {
                     <td className="px-3 py-2 whitespace-nowrap text-left text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
                         <span
-                          onClick={() => {}}
+                          onClick={() => navigate(`/edit-customer/${customer.customer_id}`)}
                           role="button"
                           className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:border-blue-500 transition"
                           title="Edit Customer"

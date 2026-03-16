@@ -8,7 +8,7 @@ import {
 } from "../Reusables/Icons";
 import { Calendar } from "lucide-react"; // ✅ custom calendar icon
 import { Toast } from "../Reusables/Toast";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getAllInvoices, deleteInvoice } from "../../lib/api";
 
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, billNo }) => {
   if (!isOpen) return null;
@@ -68,9 +68,7 @@ export default function InvoiceList() {
   useEffect(() => {
     const fetchInvoices = async () => {
       try {
-        const res = await fetch(API_URL+"/api/invoices");
-        if (!res.ok) throw new Error("Failed to fetch data.");
-        const invoicesData = await res.json();
+        const invoicesData = await getAllInvoices();
         setInvoices(invoicesData);
         setFilteredInvoices(invoicesData);
       } catch (err) {
@@ -123,11 +121,7 @@ export default function InvoiceList() {
   const handleConfirmDelete = async () => {
     if (!invoiceToDelete) return;
     try {
-      const response = await fetch(
-        `${API_URL}/api/invoices/${invoiceToDelete.invoice_id}`,
-        { method: "DELETE" }
-      );
-      if (!response.ok) throw new Error("Failed to delete invoice");
+      await deleteInvoice(invoiceToDelete.invoice_id);
       setInvoices(
         invoices.filter((i) => i.invoice_id !== invoiceToDelete.invoice_id)
       );
@@ -306,7 +300,7 @@ export default function InvoiceList() {
                         <span
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleRowClick(invoice.invoice_id);
+                            navigate(`/invoice-form/${invoice.invoice_id}`);
                           }}
                           role="button"
                           className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:border-blue-500 transition"

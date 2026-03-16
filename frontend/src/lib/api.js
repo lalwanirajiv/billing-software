@@ -1,0 +1,310 @@
+import { getDB } from "./database";
+
+// ================= CUSTOMERS ================= //
+
+export const createCustomer = async (data) => {
+  const db = await getDB();
+  const { name, address_line1, address_line2, gstin, phone } = data;
+  if (!name || name.trim() === "") throw new Error("Customer name is required");
+
+  const result = await db.execute(
+    `INSERT INTO customers (name, address_line1, address_line2, gstin, phone_number, created_at)
+     VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)`,
+    [name, address_line1 || null, address_line2 || null, gstin || null, phone || null]
+  );
+  return { message: "Customer created successfully!", customerId: result.lastInsertId };
+};
+
+export const getAllCustomers = async () => {
+  const db = await getDB();
+  return await db.select(
+    `SELECT * FROM customers WHERE is_deleted = 0 ORDER BY created_at DESC`
+  );
+};
+
+export const getCustomerById = async (id) => {
+  const db = await getDB();
+  const customers = await db.select(
+    `SELECT * FROM customers WHERE customer_id = $1`, [id]
+  );
+  if (customers.length === 0) throw new Error("Customer not found");
+  return customers[0];
+};
+
+export const getIdByName = async (name) => {
+  const db = await getDB();
+  if (!name || name.trim() === "") throw new Error("Name is required");
+
+  // case insensitive search in sqlite is default for LIKE
+  const customers = await db.select(
+    `SELECT * FROM customers WHERE name LIKE $1 AND is_deleted = 0`,
+    [`%${name}%`]
+  );
+  if (customers.length === 0) throw new Error("Customer not found");
+  return customers;
+};
+
+export const updateCustomer = async (id, data) => {
+  const db = await getDB();
+  const { name, address_line1, address_line2, gstin, phone } = data;
+  if (!name || name.trim() === "") throw new Error("Customer name is required");
+
+  await db.execute(
+    `UPDATE customers 
+     SET name = $1, address_line1 = $2, address_line2 = $3, gstin = $4, phone_number = $5
+     WHERE customer_id = $6`,
+    [name, address_line1 || null, address_line2 || null, gstin || null, phone || null, id]
+  );
+  return { message: "Customer updated successfully!" };
+};
+
+export const deleteCustomer = async (id) => {
+  const db = await getDB();
+  await db.execute(
+    `UPDATE customers SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP WHERE customer_id = $1`,
+    [id]
+  );
+  return { message: "Customer deleted successfully!" };
+};
+
+export const getTopCustomers = async (limit = 5) => {
+  const db = await getDB();
+  const res = await db.select(
+    `SELECT c.customer_id, c.name AS customer_name, SUM(i.grand_total) AS total_revenue
+     FROM customers c
+     JOIN invoices i ON c.customer_id = i.customer_id
+     GROUP BY c.customer_id, c.name
+     ORDER BY total_revenue DESC
+     LIMIT $1`,
+    [limit]
+  );
+  return { data: res };
+};
+
+// ================= INVOICES ================= //
+
+export const createInvoice = async (data) => {
+  const db = await getDB();
+  const { ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, items, customer_id } = data;
+
+  if (!ship_to || ship_to.trim() === "") throw new Error("Customer Name is required");
+
+  const result = await db.execute(
+    `INSERT INTO invoices (ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, customer_id, invoice_status, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'Due', CURRENT_TIMESTAMP)`,
+    [ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, customer_id]
+  );
+  const invoiceId = result.lastInsertId;
+
+  if (items && items.length > 0) {
+    for (let item of items) {
+      await db.execute(
+        `INSERT INTO items (invoice_id, item_name, hsn, quantity, price, total) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [invoiceId, item.item_name || item.name, item.hsn, item.quantity || item.qty, item.price || item.rate, item.total || item.amount]
+      );
+    }
+  }
+  return { message: "Invoice saved successfully!", invoiceId };
+};
+
+export const getInvoiceById = async (id) => {
+  const db = await getDB();
+  const docs = await db.select(`SELECT * FROM invoices WHERE invoice_id = $1`, [id]);
+  if (docs.length === 0) throw new Error("Invoice not found");
+  
+  const items = await db.select(`SELECT * FROM items WHERE invoice_id = $1`, [id]);
+  return { ...docs[0], items };
+};
+
+export const getAllInvoices = async () => {
+  const db = await getDB();
+  return await db.select(`SELECT * FROM invoices ORDER BY bill_no DESC`);
+};
+
+export const updateStatus = async (id, status) => {
+  const db = await getDB();
+  await db.execute(`UPDATE invoices SET invoice_status = $1 WHERE invoice_id = $2`, [status, id]);
+  return { invoice_id: id, invoice_status: status };
+};
+
+export const getRecentInvoices = async (limit = 5) => {
+  const db = await getDB();
+  const invoices = await db.select(
+    `SELECT i.invoice_id, i.bill_no, i.date, i.grand_total, i.invoice_status, c.name AS customer_name
+     FROM invoices i
+     LEFT JOIN customers c ON i.customer_id = c.customer_id
+     WHERE i.invoice_status IS NOT NULL
+     ORDER BY i.created_at DESC LIMIT $1`,
+    [limit]
+  );
+  return { data: invoices };
+};
+
+export const updateInvoice = async (id, data) => {
+  const db = await getDB();
+  const { ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, items, customer_id } = data;
+
+  await db.execute(
+    `UPDATE invoices
+     SET ship_to = $1, bill_no = $2, date = $3, terms_of_payment = $4, state = $5, total_quantity = $6, sub_total = $7, cgst = $8, sgst = $9, igst = $10, grand_total = $11, customer_id = $12
+     WHERE invoice_id = $13`,
+    [ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, customer_id, id]
+  );
+
+  await db.execute(`DELETE FROM items WHERE invoice_id = $1`, [id]);
+
+  if (items && items.length > 0) {
+    for (let item of items) {
+      await db.execute(
+        `INSERT INTO items (invoice_id, item_name, hsn, quantity, price, total) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [id, item.item_name || item.name, item.hsn, item.quantity || item.qty, item.price || item.rate, item.total || item.amount]
+      );
+    }
+  }
+  return { message: "Invoice updated successfully!" };
+};
+
+export const checkInvoice = async (billNo) => {
+  const db = await getDB();
+  const invoices = await db.select(`SELECT * FROM invoices WHERE bill_no = $1`, [billNo]);
+  return { exists: invoices.length > 0 };
+};
+
+export const deleteInvoice = async (id) => {
+  const db = await getDB();
+  await db.execute(`DELETE FROM invoices WHERE invoice_id = $1`, [id]);
+  return { message: "Invoice deleted successfully!" };
+};
+
+// ================= STATS ================= //
+
+export const getDashboardStats = async () => {
+    const db = await getDB();
+    
+    const calcChange = (current, previous) => {
+        if (!previous || previous === 0) return current ? 100 : 0;
+        return (((current - previous) / previous) * 100).toFixed(1);
+    };
+
+    const runQuery = async (query) => {
+        const res = await db.select(query);
+        return res[0] ? Object.values(res[0])[0] : 0;
+    };
+
+    const currentMonthCondition = "strftime('%Y-%m', date) = strftime('%Y-%m', 'now')";
+    const lastMonthCondition = "strftime('%Y-%m', date) = strftime('%Y-%m', 'now', '-1 month')";
+
+    const totalRevenueCurrentMonth = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE ${currentMonthCondition}`);
+    const totalRevenue = await runQuery(`SELECT SUM(grand_total) FROM invoices`);
+    const overdueAmount = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Overdue'`);
+    const invoicesDue = await runQuery(`SELECT COUNT(*) FROM invoices WHERE invoice_status='Due'`);
+    const totalCustomers = await runQuery(`SELECT COUNT(*) FROM customers`);
+
+    const prevTotalRevenue = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE ${lastMonthCondition}`);
+    const prevOverdueAmount = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Overdue' AND ${lastMonthCondition}`);
+    const prevTotalCustomers = await runQuery(`SELECT COUNT(*) FROM customers WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', '-1 month')`);
+
+    return {
+        data: {
+            totalRevenueCurrentMonth: totalRevenueCurrentMonth || 0,
+            totalRevenueChange: Number(calcChange(totalRevenueCurrentMonth || 0, prevTotalRevenue || 0)),
+            overdueAmount: overdueAmount || 0,
+            overdueAmountChange: Number(calcChange(overdueAmount || 0, prevOverdueAmount || 0)),
+            invoicesDue: Number(invoicesDue) || 0,
+            invoicesDueChange: null,
+            totalRevenue: Number(totalRevenue) || 0,
+            totalCustomers: Number(totalCustomers) || 0,
+            totalCustomersChange: Number(calcChange(totalCustomers || 0, prevTotalCustomers || 0))
+        }
+    };
+};
+
+export const getInvoiceStatusCounts = async () => {
+    const db = await getDB();
+    const data = [];
+    const statuses = ["Paid", "Overdue", "Due"];
+    for (const status of statuses) {
+        const res = await db.select(`SELECT COUNT(*) as value FROM invoices WHERE invoice_status = $1`, [status]);
+        data.push({ name: status, value: Number(res[0]?.value) || 0 });
+    }
+    return { data };
+};
+
+export const getRevenueTimeline = async () => {
+    const db = await getDB();
+    // Simulate what revenue route used to do, typically group by months or days
+    const res = await db.select(`
+        SELECT strftime('%Y-%m', date) as month, SUM(grand_total) as revenue 
+        FROM invoices 
+        GROUP BY month 
+        ORDER BY month ASC 
+        LIMIT 6
+    `);
+    return { data: res };
+};
+
+// ================= DETAILED REPORTS ================= //
+
+export const getSalesReport = async (startDate, endDate) => {
+  const db = await getDB();
+  const start = startDate || "1900-01-01";
+  const end = endDate || "2999-12-31";
+  const res = await db.select(
+    `SELECT date, bill_no AS invoice, ship_to AS customer, grand_total AS amount, (cgst + sgst + igst) AS tax
+     FROM invoices
+     WHERE date BETWEEN $1 AND $2
+     ORDER BY date DESC`,
+    [start, end]
+  );
+  return { data: res };
+};
+
+export const getTaxReport = async (startDate, endDate) => {
+  const db = await getDB();
+  const start = startDate || "1900-01-01";
+  const end = endDate || "2999-12-31";
+  const res = await db.select(
+    `SELECT 
+        SUM(sub_total) AS taxable_value, 
+        SUM(cgst) AS total_cgst, 
+        SUM(sgst) AS total_sgst, 
+        SUM(igst) AS total_igst, 
+        (SUM(cgst) + SUM(sgst) + SUM(igst)) AS total_tax,
+        COUNT(*) as total_invoices
+     FROM invoices
+     WHERE date BETWEEN $1 AND $2`,
+    [start, end]
+  );
+  return { data: res[0] || {} };
+};
+
+export const getCustomerDetailedReport = async (startDate, endDate) => {
+  const db = await getDB();
+  const start = startDate || "1900-01-01";
+  const end = endDate || "2999-12-31";
+  const res = await db.select(
+    `SELECT ship_to AS customer, COUNT(*) AS total_invoices, SUM(grand_total) AS total_revenue
+     FROM invoices
+     WHERE date BETWEEN $1 AND $2
+     GROUP BY ship_to
+     ORDER BY total_revenue DESC`,
+    [start, end]
+  );
+  return { data: res };
+};
+
+export const getRevenueChartData = async (startDate, endDate) => {
+  const db = await getDB();
+  const start = startDate || "1900-01-01";
+  const end = endDate || "2999-12-31";
+  const res = await db.select(
+    `SELECT strftime('%Y-%m', date) AS name, SUM(grand_total) AS sales
+     FROM invoices
+     WHERE date BETWEEN $1 AND $2
+     GROUP BY name
+     ORDER BY name ASC`,
+    [start, end]
+  );
+  return { data: res };
+};
+

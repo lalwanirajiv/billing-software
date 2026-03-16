@@ -9,8 +9,7 @@ import InvoiceItemsTable from "./InvoiceItemsTable";
 import InvoiceTotals from "./InvoiceTotals";
 import ShipToDetails from "./ShipToDetails";
 import { useToast } from "../../context/ToastContext";
-const API_URL = import.meta.env.VITE_API_URL;
-
+import { getInvoiceById } from "../../lib/api";
 
 const formatDateToDDMMYYYY = (dateString) => {
   if (!dateString) return "";
@@ -30,9 +29,7 @@ export default function Invoice() {
 
   const fetchInvoice = async (id) => {
     try {
-      const res = await fetch(`${API_URL}/api/invoices/${id}`);
-      if (!res.ok) throw new Error("Failed to fetch invoice.");
-      const data = await res.json();
+      const data = await getInvoiceById(id);
       setInvoiceData(data);
       localStorage.setItem("invoice-data",JSON.stringify(data));
     } catch (err) {

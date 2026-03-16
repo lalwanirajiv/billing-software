@@ -1,6 +1,6 @@
 // InvoiceStatusChart.jsx
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { getInvoiceStatusCounts } from "../../lib/api";
 import {
   Tooltip,
   Legend,
@@ -11,7 +11,6 @@ import {
 } from "recharts";
 
 const COLORS = ["#4ade80", "#f87171", "#fbbf24"]; // Paid: green, Overdue: red, Due: amber
-const API_URL = import.meta.env.VITE_API_URL;
 
 const InvoiceStatusChart = () => {
   const [data, setData] = useState([]);
@@ -21,9 +20,7 @@ const InvoiceStatusChart = () => {
   useEffect(() => {
     const fetchInvoiceStatus = async () => {
       try {
-        const res = await axios.get(
-          API_URL+"/api/stats/invoice-status"
-        );
+        const res = await getInvoiceStatusCounts();
         // API already returns [{ name, value }]
         setData(res.data);
       } catch (err) {

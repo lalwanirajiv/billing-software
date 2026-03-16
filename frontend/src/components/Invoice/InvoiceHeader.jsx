@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { AppleIcon, Check, ChevronDown } from "lucide-react";
 import { Toast } from "../Reusables/Toast"; // Import existing Toast
-const API_URL = import.meta.env.VITE_API_URL;
+import { updateStatus } from "../../lib/api";
 
 const StatusDropdown = ({ status, invoiceId, onStatusUpdated }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -57,18 +57,7 @@ const StatusDropdown = ({ status, invoiceId, onStatusUpdated }) => {
     setLoading(true);
 
     try {
-      const res = await fetch(
-        `${API_URL}/api/invoices/${invoiceId}/status`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus }),
-        }
-      );
-
-      if (!res.ok) {
-        throw new Error(`Failed to update status: ${res.statusText}`);
-      }
+      await updateStatus(invoiceId, newStatus);
 
       // Tell parent about success + updated status
       onStatusUpdated(`Status updated to "${newStatus}"`, "success", newStatus);

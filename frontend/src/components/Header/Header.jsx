@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { SunIcon, MoonIcon, MenuIcon, CloseIcon } from "../Reusables/Icons";
+import { MenuIcon, CloseIcon } from "../Reusables/Icons";
 
-const Header = ({ toggleTheme, theme }) => {
+const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isInvoiceMenuOpen, setInvoiceMenuOpen] = useState(false);
   const [isCustomerMenuOpen, setCustomerMenuOpen] = useState(false);
@@ -119,23 +119,8 @@ const Header = ({ toggleTheme, theme }) => {
             </Link>
           </div>
 
-          {/* Theme Toggle + Mobile Menu */}
-          <div className="flex items-center space-x-2">
-            {/* Theme Toggle */}
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={toggleTheme}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") toggleTheme();
-              }}
-              className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 cursor-pointer transition-colors inline-flex items-center justify-center"
-              aria-label="Toggle theme"
-            >
-              {theme === "light" ? <MoonIcon /> : <SunIcon />}
-            </span>
-
-            {/* Mobile hamburger */}
+          {/* Mobile hamburger */}
+          <div className="flex items-center">
             <span
               role="button"
               tabIndex={0}
@@ -145,7 +130,7 @@ const Header = ({ toggleTheme, theme }) => {
                   setIsMobileMenuOpen(!isMobileMenuOpen);
                 }
               }}
-              className="p-2 rounded-full text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors shadow-sm cursor-pointer inline-flex items-center justify-center md:hidden"
+              className="p-2 rounded-full text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm cursor-pointer inline-flex items-center justify-center md:hidden"
               aria-label="Toggle mobile menu"
             >
               {isMobileMenuOpen ? (

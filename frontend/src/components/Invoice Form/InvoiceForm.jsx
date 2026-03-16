@@ -7,7 +7,7 @@ import FormHeader from "./FormHeader";
 import ConfirmSaveModal from "../Reusables/ConfirmSaveModal";
 
 import { useToast } from "../../context/ToastContext"; // ✅ Global toast
-const API_URL = import.meta.env.VITE_API_URL;
+import { getAllCustomers, checkInvoice, getIdByName, createInvoice, updateInvoice } from "../../lib/api";
 
 const initialFormData = {
   shipTo: "",
@@ -24,7 +24,8 @@ const initialFormData = {
 export default function InvoiceForm() {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const isExistingInvoice = useParams() ? true : false;
+  const { id: invoiceIdParam } = useParams();
+  const isExistingInvoice = !!invoiceIdParam;
   const [formData, setFormData] = useState(initialFormData);
   const [showConfirmSave, setShowConfirmSave] = useState(false);
   const [totals, setTotals] = useState({
@@ -43,9 +44,7 @@ export default function InvoiceForm() {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const response = await fetch(API_URL + "/api/customer");
-        if (!response.ok) throw new Error("Network response was not ok");
-        const data = await response.json();
+        const data = await getAllCustomers();
         setCustomers(data);
       } catch (error) {
         showToast("Failed to fetch customers", "error");
@@ -57,6 +56,14 @@ export default function InvoiceForm() {
   }, [showToast]);
 
   useEffect(() => {
+    // Only pre-fill form data from localStorage when EDITING an existing invoice
+    if (!isExistingInvoice) {
+      // Clear stale data so new invoice form starts blank
+      localStorage.removeItem("invoice-data");
+      localStorage.removeItem("customer-data");
+      return;
+    }
+
     const existingData = localStorage.getItem("invoice-data");
     const existingCustomerData = localStorage.getItem("customer-data");
 
@@ -93,7 +100,7 @@ export default function InvoiceForm() {
 
       setFormData(mergedData);
     }
-  }, []);
+  }, [isExistingInvoice]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -198,34 +205,22 @@ export default function InvoiceForm() {
     try {
       // 1. Check duplicate bill number (only for new invoices)
       if (!isExistingInvoice) {
-        const checkRes = await fetch(
-          `${API_URL}/api/invoices/check/${formData.billNo}`
-        );
-        if (checkRes.ok) {
-          const { exists } = await checkRes.json();
-          if (exists) {
-            showToast(
-              `Invoice with Bill #${formData.billNo} already exists.`,
-              "error"
-            );
-            return;
-          }
+        const checkRes = await checkInvoice(formData.billNo);
+        if (checkRes.exists) {
+          showToast(
+            `Invoice with Bill #${formData.billNo} already exists.`,
+            "error"
+          );
+          return;
         }
       }
 
       // 2. Lookup customer_id
       let customerId = null;
       try {
-        const customerRes = await fetch(
-          `${API_URL}/api/customer/search?name=${encodeURIComponent(
-            formData.shipTo
-          )}`
-        );
-        if (customerRes.ok) {
-          const customer = await customerRes.json();
-          if (customer && customer.length) {
-            customerId = customer[0].customer_id;
-          }
+        const customer = await getIdByName(formData.shipTo);
+        if (customer && customer.length) {
+          customerId = customer[0].customer_id;
         }
       } catch (err) {
         console.warn("Customer lookup failed:", err);
@@ -255,40 +250,18 @@ export default function InvoiceForm() {
         })),
       };
 
-      // 4. Save or Update invoice
       let response;
       console.log("This is IInvoice ID", formData.invoice_id);
 
       if (isExistingInvoice && formData.invoice_id) {
-        // 🔄 Update existing invoice
-        response = await fetch(
-          `${API_URL}/api/invoices/${formData.invoice_id}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          }
-        );
+        response = await updateInvoice(formData.invoice_id, payload);
       } else {
-        // 🆕 Save new invoice
-        response = await fetch(API_URL + "/api/invoices", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        response = await createInvoice(payload);
       }
 
-      if (!response.ok) {
-        throw new Error(`Failed to save invoice: ${response.statusText}`);
-      }
       console.log("This is Saved Response ", response);
 
-      const savedInvoice = await response.json();
-
-      const invoiceId =
-        savedInvoice.invoiceId || // when creating
-        savedInvoice.invoice_id || // in some APIs
-        (savedInvoice.invoice ? savedInvoice.invoice.invoice_id : null); // when updating
+      const invoiceId = response.invoiceId || formData.invoice_id;
 
       if (invoiceId) {
         showToast(

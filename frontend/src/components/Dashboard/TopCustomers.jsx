@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getTopCustomers } from "../../lib/api";
 
 const TopCustomers = () => {
   const [topCustomers, setTopCustomers] = useState([]);
@@ -10,7 +9,7 @@ const TopCustomers = () => {
   useEffect(() => {
     const fetchTopCustomers = async () => {
       try {
-        const res = await axios.get(API_URL+"/api/customer/top");
+        const res = await getTopCustomers();
         setTopCustomers(res.data || []);
       } catch (err) {
         setError(err.message || "Failed to fetch top customers");
@@ -23,28 +22,32 @@ const TopCustomers = () => {
   }, []);
 
   if (loading)
-    return <p className="text-gray-500 dark:text-gray-400">Loading...</p>;
+    return <p className="text-gray-500">Loading...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">
         Top Customers
       </h3>
       <ul className="space-y-4">
-        {topCustomers.map((customer, index) => (
-          <li
-            key={customer.customer_id || index}
-            className="flex justify-between items-center"
-          >
-            <p className="font-medium text-gray-800 dark:text-gray-200">
-              {customer.customer_name}
-            </p>
-            <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">
-              ₹{Number(customer.total_revenue).toLocaleString()}
-            </p>
-          </li>
-        ))}
+        {topCustomers.length === 0 ? (
+          <p className="text-gray-500 text-sm">No data available.</p>
+        ) : (
+          topCustomers.map((customer, index) => (
+            <li
+              key={customer.customer_id || index}
+              className="flex justify-between items-center"
+            >
+              <p className="font-medium text-gray-800">
+                {customer.customer_name}
+              </p>
+              <p className="text-sm font-semibold text-gray-600">
+                ₹{Number(customer.total_revenue).toLocaleString()}
+              </p>
+            </li>
+          ))
+        )}
       </ul>
     </div>
   );
