@@ -1,333 +1,256 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useRef, useMemo } from "react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import {
-  Printer,
-  FileDown,
-  TrendingUp,
-  FileText,
-  IndianRupee,
-  Calendar,
-} from "lucide-react";
+  getSalesReport,
+  getTaxReport,
+  getCustomerDetailedReport,
+  getRevenueChartData,
+  getInvoiceStatusReport,
+} from "../../lib/api";
 
-// --- Placeholder Data (Replace with API data later) ---
-const salesReportData = [
-  {
-    date: "2025-08-01",
-    invoice: 101,
-    customer: "Ashok Kumar",
-    amount: 5000,
-    tax: 250,
-  },
-  {
-    date: "2025-08-02",
-    invoice: 102,
-    customer: "Bhavika Saree",
-    amount: 2500,
-    tax: 125,
-  },
-  {
-    date: "2025-08-05",
-    invoice: 103,
-    customer: "Rahul Test",
-    amount: 10000,
-    tax: 500,
-  },
-  {
-    date: "2025-08-08",
-    invoice: 104,
-    customer: "Asha Readymade",
-    amount: 1750,
-    tax: 87.5,
-  },
-  {
-    date: "2025-08-12",
-    invoice: 105,
-    customer: "Anuroop Stores",
-    amount: 3200,
-    tax: 160,
-  },
-  {
-    date: "2025-08-15",
-    invoice: 106,
-    customer: "Rahul Sharma",
-    amount: 8000,
-    tax: 400,
-  },
-  {
-    date: "2025-08-20",
-    invoice: 107,
-    customer: "Kamlesh Kumar",
-    amount: 6500,
-    tax: 325,
-  },
-  {
-    date: "2025-08-25",
-    invoice: 108,
-    customer: "Evergreen Center",
-    amount: 4800,
-    tax: 240,
-  },
-];
+// Subcomponents
+import ReportHeader from "./subcomponents/ReportHeader";
+import ReportFilters from "./subcomponents/ReportFilters";
+import ReportStats from "./subcomponents/ReportStats";
+import VisualInsights from "./subcomponents/VisualInsights";
+import FinancialLedger from "./subcomponents/FinancialLedger";
+import PrintView from "./subcomponents/PrintView";
 
-const chartData = [
-  { name: "Week 1", sales: 7500 },
-  { name: "Week 2", sales: 4950 },
-  { name: "Week 3", sales: 14500 },
-  { name: "Week 4", sales: 11300 },
-];
-
-// --- Reusable Child Components for the Reports Page ---
-const ReportStatCard = ({ title, value, icon }) => {
-  const Icon = icon;
-  return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-      <div className="flex items-center">
-        <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-full">
-          <Icon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-        </div>
-        <div className="ml-4">
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            {title}
-          </p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            {value}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- Main Reports Component ---
 export default function Reports() {
-  const [reportType, setReportType] = useState("salesSummary");
-  const [startDate, setStartDate] = useState("2025-08-01");
-  const [endDate, setEndDate] = useState("2025-08-31");
+  const isFetching = useRef(false);
 
-  // Placeholder functions for actions
-  const handleGenerateReport = () => {
-    console.log(
-      `Generating ${reportType} report from ${startDate} to ${endDate}`
-    );
-  };
+  // Logic for Indian Financial Year (April to March)
+  const fy = useMemo(() => {
+    const today = new Date();
+    const currentMonth = today.getMonth(); 
+    const currentYear = today.getFullYear();
+    let FYStartYear = currentMonth >= 3 ? currentYear : currentYear - 1;
+    return {
+      start: `${FYStartYear}-04-01`,
+      end: today.toISOString().split("T")[0]
+    };
+  }, []);
+
+  const [reportType, setReportType] = useState("salesSummary");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  
+  // Pagination State
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Single state object
+  const [reportState, setReportState] = useState({
+    sales: [],
+    taxMetrics: { taxable_value: 0, total_tax: 0, total_invoices: 0, total_amount: 0 },
+    customers: [],
+    chart: [],
+    statusBreakdown: [],
+    loading: false,
+    error: null
+  });
+
+  const fetchReportData = useCallback(async () => {
+    if (isFetching.current) return;
+    
+    isFetching.current = true;
+    setReportState(prev => ({ ...prev, loading: true, error: null }));
+    setCurrentPage(1);
+
+    try {
+      if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+        throw new Error("'From Date' cannot be later than 'To Date'");
+      }
+
+      let newState = {
+        sales: [],
+        taxMetrics: { taxable_value: 0, total_tax: 0, total_invoices: 0, total_amount: 0 },
+        customers: [],
+        chart: [],
+        statusBreakdown: []
+      };
+
+      // 1. Fetch Sales (Standard)
+      const sales = await getSalesReport(startDate, endDate);
+      newState.sales = sales.data || [];
+      
+      // 2. Fetch Status Breakdown (Comparisons)
+      const statusRes = await getInvoiceStatusReport(startDate, endDate);
+      newState.statusBreakdown = statusRes.data || [];
+
+      if (reportType === "salesSummary") {
+        const chartRes = await getRevenueChartData(startDate, endDate);
+        const rawData = chartRes.data || [];
+        
+        let processedChartData = [];
+        const dataMap = new Map(rawData.map(d => [d.name, d.sales]));
+        
+        let sDate = startDate ? new Date(startDate) : (rawData.length > 0 ? new Date(rawData[0].name + "-01") : new Date(new Date().getFullYear(), 0, 1));
+        let eDate = endDate ? new Date(endDate) : new Date();
+
+        if (isNaN(sDate.getTime())) sDate = new Date();
+        if (isNaN(eDate.getTime())) eDate = new Date();
+        
+        let curr = new Date(sDate.getFullYear(), sDate.getMonth(), 1);
+        const finish = new Date(eDate.getFullYear(), eDate.getMonth(), 1);
+        
+        let safety = 0;
+        const maxMonths = 36;
+        while (curr <= finish && safety < maxMonths) {
+          const key = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}`;
+          processedChartData.push({
+            name: new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(curr),
+            sales: Number(dataMap.get(key)) || 0
+          });
+          curr.setMonth(curr.getMonth() + 1);
+          safety++;
+        }
+        newState.chart = processedChartData;
+
+        const totalAmount = newState.sales.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+        const totalTax = newState.sales.reduce((sum, item) => sum + (Number(item.tax) || 0), 0);
+        newState.taxMetrics = {
+          total_amount: totalAmount,
+          taxable_value: totalAmount - totalTax,
+          total_tax: totalTax,
+          total_invoices: newState.sales.length
+        };
+      } 
+      else if (reportType === "taxReport") {
+        const tax = await getTaxReport(startDate, endDate);
+        const tData = tax?.data || {};
+        newState.taxMetrics = {
+           ...tData,
+           total_amount: (Number(tData.taxable_value) || 0) + (Number(tData.total_tax) || 0),
+           total_invoices: newState.sales.length
+        };
+        
+        newState.chart = [
+          { name: 'CGST', value: Number(tData.total_cgst) || 0 },
+          { name: 'SGST', value: Number(tData.total_sgst) || 0 },
+          { name: 'IGST', value: Number(tData.total_igst) || 0 },
+        ].filter(d => d.value > 0);
+      } 
+      else if (reportType === "customerReport") {
+        const customers = await getCustomerDetailedReport(startDate, endDate);
+        newState.customers = customers?.data || [];
+        
+        newState.chart = newState.customers.slice(0, 10).map(c => ({
+          name: c.customer,
+          sales: Number(c.total_revenue) || 0,
+          count: Number(c.total_invoices) || 0
+        }));
+
+        newState.taxMetrics.total_amount = newState.customers.reduce((sum, c) => sum + (Number(c.total_revenue) || 0), 0);
+        newState.taxMetrics.total_invoices = newState.sales.length;
+      }
+
+      setReportState(prev => ({ ...prev, ...newState, loading: false, error: null }));
+    } catch (err) {
+      setReportState(prev => ({ ...prev, loading: false, error: err.message }));
+    } finally {
+      isFetching.current = false;
+    }
+  }, [reportType, startDate, endDate]);
+
+  // Auto-fetch on mount
+  React.useEffect(() => {
+    fetchReportData();
+  }, [fetchReportData]);
 
   const handleExport = () => {
-    console.log("Exporting report to CSV...");
+    let csvContent = "";
+    const timestamp = new Date().toISOString().slice(0, 10);
+    if (reportType === "salesSummary") {
+      csvContent = "Date,Invoice Number,Customer Name,Amount (INR),Tax (INR),Status\n";
+      reportState.sales.forEach(row => {
+        csvContent += `${row.date},${row.invoice},"${row.customer}",${row.amount},${row.tax},${row.invoice_status}\n`;
+      });
+    } else if (reportType === "customerReport") {
+      csvContent = "Customer Name,Total Invoices,Life-time Revenue (INR)\n";
+      reportState.customers.forEach(row => {
+        csvContent += `"${row.customer}",${row.total_invoices},${row.total_revenue}\n`;
+      });
+    } else if (reportType === "taxReport") {
+      const tm = reportState.taxMetrics;
+      csvContent = "Metric,Accounting Value (INR)\n";
+      csvContent += `Total Invoices Generated,${tm.total_invoices || 0}\nCentral Tax (CGST),${tm.total_cgst || 0}\nState Tax (SGST),${tm.total_sgst || 0}\nIntegrated Tax (IGST),${tm.total_igst || 0}\nGross Tax Liability,${tm.total_tax || 0}\nNet Taxable Value,${tm.taxable_value || 0}\n`;
+    }
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Report_${reportType}_${timestamp}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
-  const handlePrint = () => {
-    console.log("Printing report...");
-    window.print();
-  };
+  const handlePrint = () => { window.print(); };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 bg-gray-100 dark:bg-slate-900 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        {/* 1. Page Header & Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Reports
-          </h1>
-          <div className="flex items-center gap-4 mt-4 sm:mt-0">
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors border border-gray-300 dark:border-gray-600"
-            >
-              <FileDown className="h-4 w-4" />
-              Export to CSV
-            </button>
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors border border-gray-300 dark:border-gray-600"
-            >
-              <Printer className="h-4 w-4" />
-              Print
-            </button>
-          </div>
-        </div>
+    <div className="p-4 sm:p-6 lg:p-8 bg-slate-50 min-h-screen">
+      <div className="max-w-7xl mx-auto no-print">
+        <ReportHeader 
+          onExport={handleExport} 
+          onPrint={handlePrint} 
+        />
 
-        {/* 2. Filter Bar */}
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-8 flex flex-col sm:flex-row items-center gap-4">
-          <div className="w-full sm:w-auto">
-            <label htmlFor="reportType" className="sr-only">
-              Report Type
-            </label>
-            <select
-              id="reportType"
-              value={reportType}
-              onChange={(e) => setReportType(e.target.value)}
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200"
-            >
-              <option value="salesSummary">Sales Summary</option>
-              <option value="customerReport">Top Customers</option>
-              <option value="taxReport">Tax Summary</option>
-            </select>
-          </div>
+        <ReportFilters 
+          reportType={reportType}
+          setReportType={setReportType}
+          startDate={startDate}
+          setStartDate={setStartDate}
+          endDate={endDate}
+          setEndDate={setEndDate}
+          onRunAnalysis={fetchReportData}
+          loading={reportState.loading}
+        />
 
-          {/* Start Date with Calendar */}
-          {/* Start Date with Calendar */}
-          <div className="w-full sm:w-auto">
-            <label htmlFor="startDate" className="sr-only">
-              Start Date
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type="date"
-                id="startDate"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                placeholder="MM/DD/YYYY"
-                className="pl-10 pr-4 py-2 border rounded-lg bg-white dark:bg-gray-800 
-               text-gray-900 dark:text-gray-100 
-               border-gray-300 dark:border-gray-600 
-               focus:ring-2 focus:ring-blue-500 
-               appearance-none 
-               [&::-webkit-calendar-picker-indicator]:opacity-0 
-               [&::-webkit-calendar-picker-indicator]:absolute 
-               [&::-webkit-calendar-picker-indicator]:inset-0 
-               [&::-webkit-calendar-picker-indicator]:w-full 
-               [&::-webkit-calendar-picker-indicator]:h-full 
-               [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-              />
-              <Calendar
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 
-               text-gray-500 dark:text-gray-400 pointer-events-none"
-                size={18}
-              />
-            </div>
-          </div>
+        <ReportStats 
+          taxMetrics={reportState.taxMetrics}
+          customers={reportState.customers}
+          reportType={reportType}
+          sales={reportState.sales}
+        />
 
-          {/* End Date with Calendar */}
-          <div className="w-full sm:w-auto">
-            <label htmlFor="endDate" className="sr-only">
-              End Date
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type="date"
-                id="endDate"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                placeholder="MM/DD/YYYY"
-                className="pl-10 pr-4 py-2 border rounded-lg bg-white dark:bg-gray-800 
-               text-gray-900 dark:text-gray-100 
-               border-gray-300 dark:border-gray-600 
-               focus:ring-2 focus:ring-blue-500 
-               appearance-none 
-               [&::-webkit-calendar-picker-indicator]:opacity-0 
-               [&::-webkit-calendar-picker-indicator]:absolute 
-               [&::-webkit-calendar-picker-indicator]:inset-0 
-               [&::-webkit-calendar-picker-indicator]:w-full 
-               [&::-webkit-calendar-picker-indicator]:h-full 
-               [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-              />
-              <Calendar
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 
-               text-gray-500 dark:text-gray-400 pointer-events-none"
-                size={18}
-              />
-            </div>
-          </div>
+        <VisualInsights 
+          reportType={reportType}
+          chart={reportState.chart}
+          statusBreakdown={reportState.statusBreakdown}
+          loading={reportState.loading}
+        />
 
-          <button
-            onClick={handleGenerateReport}
-            className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Generate Report
-          </button>
-        </div>
-
-        {/* 3. Key Metrics Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <ReportStatCard
-            title="Total Sales"
-            value="₹41,750"
-            icon={TrendingUp}
-          />
-          <ReportStatCard title="Total Invoices" value="8" icon={FileText} />
-          <ReportStatCard
-            title="Taxes Collected"
-            value="₹2,087.50"
-            icon={IndianRupee}
-          />
-        </div>
-
-        {/* 4. Data Visualization Chart */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Sales Revenue (August 2025)
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-              <XAxis dataKey="name" stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" />
-              <Tooltip
-                contentStyle={{ backgroundColor: "#1f2937", border: "none" }}
-                cursor={{ fill: "rgba(60, 130, 246, 0.1)" }}
-              />
-              <Bar dataKey="sales" fill="#3b82f6" name="Sales (₹)" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* 5. Detailed Data Table */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-          <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700/50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase">
-                  Invoice #
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase">
-                  Customer
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase">
-                  Tax
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {salesReportData.map((row) => (
-                <tr
-                  key={row.invoice}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {row.date}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {row.invoice}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                    {row.customer}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                    ₹{row.amount.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                    ₹{row.tax.toFixed(2)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <FinancialLedger 
+          reportType={reportType}
+          sales={reportState.sales}
+          customers={reportState.customers}
+          taxMetrics={reportState.taxMetrics}
+          rowsPerPage={rowsPerPage}
+          setRowsPerPage={setRowsPerPage}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          loading={reportState.loading}
+        />
       </div>
+
+      <style>{`
+        @media print {
+          body { background: white !important; -webkit-print-color-adjust: exact; }
+          .no-print { display: none !important; }
+          .print-block { display: block !important; padding: 30px; }
+          table { width: 100%; border: 2px solid #000; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #000; padding: 10px; font-size: 10px; }
+          th { background: #f8fafc !important; }
+        }
+      `}</style>
+
+      <PrintView 
+        reportType={reportType}
+        sales={reportState.sales}
+        customers={reportState.customers}
+        taxMetrics={reportState.taxMetrics}
+        startDate={startDate}
+        endDate={endDate}
+      />
     </div>
   );
 }
