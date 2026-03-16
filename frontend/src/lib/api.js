@@ -369,3 +369,19 @@ export const getRevenueChartData = async (startDate, endDate) => {
   return { data: res };
 };
 
+export const getDetailedInvoicesByDate = async (startDate, endDate) => {
+  const db = await getDB();
+  const start = startDate || "1900-01-01";
+  const end = endDate || "2999-12-31";
+  
+  const res = await db.select(
+    `SELECT i.*, c.name AS customer_name, c.gstin AS customer_gstin 
+     FROM invoices i
+     LEFT JOIN customers c ON i.customer_id = c.customer_id
+     WHERE (i.date BETWEEN $1 AND $2) OR (i.date IS NULL AND $1 = '1900-01-01')
+     ORDER BY i.date ASC, i.bill_no ASC`,
+    [start, end]
+  );
+  return { data: res };
+};
+

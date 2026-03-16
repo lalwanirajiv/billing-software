@@ -1,0 +1,79 @@
+import React from "react";
+import { Link } from "react-router-dom";
+import { SearchIcon } from "../../Reusables/Icons";
+import { Calendar, FileDown } from "lucide-react";
+
+export const InvoiceListHeader = ({ 
+  dateFilter, 
+  setDateFilter, 
+  searchTerm, 
+  setSearchTerm, 
+  onExportClick 
+}) => {
+  return (
+    <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+        All Invoices
+      </h1>
+      <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+        {/* Date Filter */}
+        <div className="relative">
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="pl-10 pr-4 py-2 border rounded-lg bg-white dark:bg-gray-800 
+           text-gray-900 dark:text-gray-100 
+           border-gray-300 dark:border-gray-600 
+           focus:ring-2 focus:ring-blue-500 
+           appearance-none 
+           [&::-webkit-calendar-picker-indicator]:opacity-0 
+           [&::-webkit-calendar-picker-indicator]:absolute 
+           [&::-webkit-calendar-picker-indicator]:inset-0 
+           [&::-webkit-calendar-picker-indicator]:w-full 
+           [&::-webkit-calendar-picker-indicator]:h-full 
+           [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+          />
+          <Calendar
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 
+           text-gray-500 dark:text-gray-400 pointer-events-none"
+            size={18}
+          />
+        </div>
+
+        {/* Search bar */}
+        <div className="relative w-full sm:w-64">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <SearchIcon />
+          </div>
+          <input
+            type="text"
+            placeholder="Search invoices..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white dark:bg-gray-800 
+                       text-gray-900 dark:text-gray-100 
+                       border-gray-300 dark:border-gray-600 
+                       focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          <button
+            onClick={onExportClick}
+            className="px-4 py-2 border-2 border-slate-200 dark:border-gray-600 text-slate-700 dark:text-gray-200 rounded-lg text-center hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center justify-center gap-2 font-semibold transition-all"
+          >
+            <FileDown size={18} /> Export
+          </button>
+          <Link
+            to="/invoice-form"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-center hover:bg-blue-700 flex items-center justify-center font-bold shadow-lg shadow-blue-100 dark:shadow-none"
+          >
+            Add New Invoice
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+};
