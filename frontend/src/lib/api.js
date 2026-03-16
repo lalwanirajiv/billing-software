@@ -116,7 +116,44 @@ export const getInvoiceById = async (id) => {
   return { ...docs[0], items };
 };
 
+// Helper to refresh "Due" statuses to "Overdue" automatically
+export const refreshInvoiceStatuses = async () => {
+  const db = await getDB();
+  const dueInvoices = await db.select(
+    `SELECT invoice_id, date, terms_of_payment FROM invoices WHERE invoice_status = 'Due'`
+  );
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (const inv of dueInvoices) {
+    if (!inv.date) continue;
+
+    // Default to 0 days if no numeric days are found
+    let days = 30; // Default
+    const match = inv.terms_of_payment?.match(/(\d+)/);
+    if (match) {
+      days = parseInt(match[0], 10);
+    } else if (inv.terms_of_payment?.toLowerCase().includes("immediate")) {
+      days = 0;
+    }
+
+    const billDate = new Date(inv.date);
+    const dueDate = new Date(billDate);
+    dueDate.setDate(billDate.getDate() + days);
+    dueDate.setHours(0, 0, 0, 0);
+
+    if (today > dueDate) {
+      await db.execute(
+        `UPDATE invoices SET invoice_status = 'Overdue' WHERE invoice_id = $1`,
+        [inv.invoice_id]
+      );
+    }
+  }
+};
+
 export const getAllInvoices = async () => {
+  await refreshInvoiceStatuses();
   const db = await getDB();
   return await db.select(`SELECT * FROM invoices ORDER BY bill_no DESC`);
 };
@@ -128,6 +165,7 @@ export const updateStatus = async (id, status) => {
 };
 
 export const getRecentInvoices = async (limit = 5) => {
+  await refreshInvoiceStatuses();
   const db = await getDB();
   const invoices = await db.select(
     `SELECT i.invoice_id, i.bill_no, i.date, i.grand_total, i.invoice_status, c.name AS customer_name
@@ -179,6 +217,7 @@ export const deleteInvoice = async (id) => {
 // ================= STATS ================= //
 
 export const getDashboardStats = async () => {
+    await refreshInvoiceStatuses();
     const db = await getDB();
     
     const calcChange = (current, previous) => {
@@ -246,14 +285,36 @@ export const getRevenueTimeline = async () => {
 // ================= DETAILED REPORTS ================= //
 
 export const getSalesReport = async (startDate, endDate) => {
+  await refreshInvoiceStatuses();
+  const db = await getDB();
+  
+  const start = startDate || "1900-01-01";
+  const end = endDate || "2999-12-31";
+
+  // Using a more inclusive query to capture NULL dates and edge cases
+  const res = await db.select(
+    `SELECT invoice_id, date, bill_no AS invoice, ship_to AS customer, grand_total AS amount, (cgst + sgst + igst) AS tax, invoice_status
+     FROM invoices
+     WHERE (date BETWEEN $1 AND $2) OR (date IS NULL AND $1 = '1900-01-01')
+     ORDER BY date DESC, bill_no DESC`,
+    [start, end]
+  );
+  return { data: res };
+};
+
+export const getInvoiceStatusReport = async (startDate, endDate) => {
   const db = await getDB();
   const start = startDate || "1900-01-01";
   const end = endDate || "2999-12-31";
+  
   const res = await db.select(
-    `SELECT date, bill_no AS invoice, ship_to AS customer, grand_total AS amount, (cgst + sgst + igst) AS tax
+    `SELECT 
+        invoice_status as status, 
+        COUNT(*) as count, 
+        SUM(grand_total) as amount
      FROM invoices
-     WHERE date BETWEEN $1 AND $2
-     ORDER BY date DESC`,
+     WHERE (date BETWEEN $1 AND $2) OR (date IS NULL AND $1 = '1900-01-01')
+     GROUP BY invoice_status`,
     [start, end]
   );
   return { data: res };
