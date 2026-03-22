@@ -164,6 +164,15 @@ export const updateStatus = async (id, status) => {
   return { invoice_id: id, invoice_status: status };
 };
 
+export const getInvoicesByCustomerId = async (customerId) => {
+  await refreshInvoiceStatuses();
+  const db = await getDB();
+  return await db.select(
+    `SELECT * FROM invoices WHERE customer_id = $1 ORDER BY date DESC, bill_no DESC`,
+    [customerId]
+  );
+};
+
 export const getRecentInvoices = async (limit = 5) => {
   await refreshInvoiceStatuses();
   const db = await getDB();

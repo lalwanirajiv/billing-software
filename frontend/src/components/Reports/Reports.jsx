@@ -14,6 +14,7 @@ import ReportStats from "./subcomponents/ReportStats";
 import VisualInsights from "./subcomponents/VisualInsights";
 import FinancialLedger from "./subcomponents/FinancialLedger";
 import PrintView from "./subcomponents/PrintView";
+import { BackButton } from "../Reusables/BackButton";
 
 export default function Reports() {
   const isFetching = useRef(false);
@@ -189,6 +190,7 @@ export default function Reports() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto no-print">
+        <BackButton />
         <ReportHeader 
           onExport={handleExport} 
           onPrint={handlePrint} 

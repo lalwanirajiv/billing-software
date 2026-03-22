@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
+import { BackButton } from "../Reusables/BackButton";
 import TopInfoPanel from "./TopInfoPanel";
 import ItemsList from "./ItemsList";
 import FormHeader from "./FormHeader";
 import ConfirmSaveModal from "../Reusables/ConfirmSaveModal";
-
-import { useToast } from "../../context/ToastContext"; // ✅ Global toast
-import { getAllCustomers, checkInvoice, getIdByName, createInvoice, updateInvoice, getInvoiceById, getCustomerById } from "../../lib/api";
+import { useToast } from "../../context/ToastContext";
+import { 
+  getAllCustomers, 
+  checkInvoice, 
+  getIdByName, 
+  createInvoice, 
+  updateInvoice, 
+  getInvoiceById, 
+  getCustomerById 
+} from "../../lib/api";
 
 const initialFormData = {
   shipTo: "",
@@ -312,6 +319,7 @@ export default function InvoiceForm() {
   return (
     <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <BackButton />
         <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg">
           <FormHeader handleClear={handleClear} />
 

@@ -11,6 +11,7 @@ import Header from "./components/Header/Header";
 
 import { ToastProvider } from "./context/ToastContext"; // ✅ global toast
 import Reports from "./components/Reports/Reports";
+import CustomerAccount from "./components/List Of Customers/CustomerAccount";
 
 function App() {
   // Initialize SQLite database
@@ -42,6 +43,7 @@ function App() {
           <Route path="/customers" element={<CustomerList />} />
           <Route path="/invoices" element={<InvoiceList />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/customer/:id" element={<CustomerAccount />} />
         </Routes>
       </ToastProvider>
     </Router>

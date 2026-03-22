@@ -13,6 +13,7 @@ import { getInvoiceById } from "../../lib/api";
 import html2pdf from "html2pdf.js";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
+import { BackButton } from "../Reusables/BackButton";
 
 // Custom styles for PDF generation to ensure single-page and premium look
 const pdfStyles = ``;
@@ -171,6 +172,7 @@ export default function Invoice() {
     <div className="bg-gray-100 dark:bg-gray-900 min-h-screen p-4 sm:p-6 lg:p-8 text-gray-800 dark:text-gray-200 uppercase">
       <div className="max-w-4xl mx-auto">
         <div className="no-print">
+          <BackButton />
           <InvoiceHeader
             handleEdit={handleEdit}
             invoice_id={invoiceData.invoice_id}
