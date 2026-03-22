@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { DollarSign, Users, Clock, FileText } from "lucide-react";
 import StatCard from "./StatCard";
+import StatusCarousel from "./StatusCarousel";
 import TopCustomers from "./TopCustomers";
 import InvoiceStatusChart from "./InvoiceStatusChart";
 import RevenueChart from "./RevenueChart";
@@ -9,6 +10,7 @@ import RecentInvoices from "./RecentInvoices";
 import { getDashboardStats } from "../../lib/api";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [topCustomers, setTopCustomers] = useState([]);
   const [recentInvoices, setRecentInvoices] = useState([]);
@@ -90,14 +92,6 @@ export default function Dashboard() {
             }
           />
           <StatCard
-            title="Invoices Due"
-            value={stats.invoicesDue}
-            icon={FileText}
-            change={null}
-            changeType={null}
-          />
-
-          <StatCard
             title="Total Customers"
             value={stats.totalCustomers}
             icon={Users}
@@ -105,7 +99,9 @@ export default function Dashboard() {
             changeType={
               stats.totalCustomersChange >= 0 ? "positive" : "negative"
             }
+            onClick={() => navigate("/customers")}
           />
+          <StatusCarousel stats={stats} />
 
           <div className="lg:col-span-2">
             <RevenueChart />
