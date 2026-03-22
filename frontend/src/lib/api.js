@@ -246,11 +246,13 @@ export const getDashboardStats = async () => {
     const totalRevenue = await runQuery(`SELECT SUM(grand_total) FROM invoices`);
     const overdueAmount = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Overdue'`);
     const invoicesDue = await runQuery(`SELECT COUNT(*) FROM invoices WHERE invoice_status='Due'`);
-    const totalCustomers = await runQuery(`SELECT COUNT(*) FROM customers`);
+    const invoicesPaid = await runQuery(`SELECT COUNT(*) FROM invoices WHERE invoice_status='Paid'`);
+    const invoicesOverdue = await runQuery(`SELECT COUNT(*) FROM invoices WHERE invoice_status='Overdue'`);
+    const totalCustomers = await runQuery(`SELECT COUNT(*) FROM customers WHERE is_deleted = 0`);
 
     const prevTotalRevenue = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE ${lastMonthCondition}`);
     const prevOverdueAmount = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Overdue' AND ${lastMonthCondition}`);
-    const prevTotalCustomers = await runQuery(`SELECT COUNT(*) FROM customers WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', '-1 month')`);
+    const prevTotalCustomers = await runQuery(`SELECT COUNT(*) FROM customers WHERE is_deleted = 0 AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', '-1 month')`);
 
     return {
         data: {
@@ -259,6 +261,8 @@ export const getDashboardStats = async () => {
             overdueAmount: overdueAmount || 0,
             overdueAmountChange: Number(calcChange(overdueAmount || 0, prevOverdueAmount || 0)),
             invoicesDue: Number(invoicesDue) || 0,
+            invoicesPaid: Number(invoicesPaid) || 0,
+            invoicesOverdue: Number(invoicesOverdue) || 0,
             invoicesDueChange: null,
             totalRevenue: Number(totalRevenue) || 0,
             totalCustomers: Number(totalCustomers) || 0,

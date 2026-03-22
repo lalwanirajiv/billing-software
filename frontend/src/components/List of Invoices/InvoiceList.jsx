@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Toast } from "../Reusables/Toast";
 import { getAllInvoices, deleteInvoice, getDetailedInvoicesByDate } from "../../lib/api";
 
@@ -13,6 +13,7 @@ import { BackButton } from "../Reusables/BackButton";
 
 export default function InvoiceList() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [invoices, setInvoices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,6 +37,19 @@ export default function InvoiceList() {
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const statusParam = params.get("status");
+    if (statusParam) {
+      const validStatuses = ["Paid", "Due", "Overdue"];
+      // Normalize to Title Case for matching the component state
+      const normalizedStatus = statusParam.charAt(0).toUpperCase() + statusParam.slice(1).toLowerCase();
+      if (validStatuses.includes(normalizedStatus)) {
+        setStatusFilter(normalizedStatus);
+      }
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const fetchInvoices = async () => {
