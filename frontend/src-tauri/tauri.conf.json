@@ -37,6 +37,8 @@
   "plugins": {
     "sql": {
       "preload": ["sqlite:billing.db"]
-    }
+    },
+    "dialog": {},
+    "fs": {}
   }
 }

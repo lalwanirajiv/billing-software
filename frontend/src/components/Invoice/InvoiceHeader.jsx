@@ -119,6 +119,7 @@ const InvoiceHeader = ({
   hideSave,
   status,
   invoice_id,
+  handleSavePDF,
 }) => {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -178,6 +179,14 @@ const InvoiceHeader = ({
           >
             Print
           </button>
+          {hideSave && (
+            <button
+              onClick={handleSavePDF}
+              className="font-medium text-sm px-4 py-2 rounded-md transition-colors text-white bg-indigo-600 hover:bg-indigo-700"
+            >
+              Save
+            </button>
+          )}
         </div>
       </div>
 

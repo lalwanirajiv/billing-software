@@ -1,7 +1,7 @@
 import React from "react";
 
 const InvoiceItemsTable = ({ data }) => {
-  const MIN_ROWS = 15;
+  const MIN_ROWS = 8;
   const items = data.items || [];
   const emptyRowsCount = Math.max(0, MIN_ROWS - items.length);
 

@@ -84,12 +84,12 @@ const SellerBankDetails = ({ data }) => {
   const amountInWords = numberToWords(data.grand_total);
 
   return (
-    <div className="space-y-4">
-      <div className="border border-gray-300 dark:border-gray-600 p-3 rounded-md min-h-[60px]">
-        <h4 className="font-bold mb-2 underline">AMOUNT IN WORDS</h4>
-        <p className="text-sm uppercase font-semibold">{amountInWords}</p>
+    <div className="space-y-2">
+      <div className="border border-gray-300 dark:border-gray-600 p-2 rounded-md min-h-[40px]">
+        <h4 className="font-bold mb-1 underline">AMOUNT IN WORDS</h4>
+        <p className="text-xs uppercase font-semibold">{amountInWords}</p>
       </div>
-      <div className="border border-gray-300 dark:border-gray-600 p-3 rounded-md">
+      <div className="border border-gray-300 dark:border-gray-600 p-2 rounded-md text-xs">
         <h4 className="font-bold mb-2 underline">BANK DETAILS</h4>
         <p>
           <span className="font-semibold">BANK NAME:</span> KOTAK MAHINDRA BANK
@@ -101,7 +101,7 @@ const SellerBankDetails = ({ data }) => {
           <span className="font-semibold">BANK IFSC CODE:</span> KKBK0002580
         </p>
       </div>
-      <div className="border border-gray-300 dark:border-gray-600 p-3 rounded-md">
+      <div className="border border-gray-300 dark:border-gray-600 p-2 rounded-md">
         <h4 className="font-bold mb-2 underline">TERMS & CONDITIONS:</h4>
         <p className="text-xs">1. Goods once sold will not be taken back.</p>
         <p className="text-xs">
