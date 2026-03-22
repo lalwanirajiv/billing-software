@@ -9,6 +9,7 @@ import { InvoiceTable } from "./subcomponents/InvoiceTable";
 import { ExportModal } from "./subcomponents/ExportModal";
 import { DeleteInvoiceModal } from "./subcomponents/DeleteInvoiceModal";
 import { InvoiceAuditReport } from "./subcomponents/InvoiceAuditReport";
+import { BackButton } from "../Reusables/BackButton";
 
 export default function InvoiceList() {
   const navigate = useNavigate();
@@ -205,6 +206,7 @@ export default function InvoiceList() {
           onClose={() => setToast({ message: "", type: "info" })} 
         />
         <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+          <BackButton />
           <InvoiceListHeader 
             dateFilter={dateFilter}
             setDateFilter={setDateFilter}
