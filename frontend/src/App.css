@@ -15,9 +15,11 @@
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
@@ -26,6 +28,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -46,22 +49,6 @@
 }
 
 /* Control page size and margins when printing */
-@media print {
-  @page {
-    size: A4;
-    margin: 20mm;   /* adds space from page borders */
-  }
-
-  body {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  #print-section {
-    padding: 10mm;   /* internal padding inside the invoice box */
-    box-sizing: border-box;
-  }
-}
 
 @media print {
   .no-print {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import SellerDetails from "./SellerDetails";
@@ -10,6 +10,12 @@ import InvoiceTotals from "./InvoiceTotals";
 import ShipToDetails from "./ShipToDetails";
 import { useToast } from "../../context/ToastContext";
 import { getInvoiceById } from "../../lib/api";
+import html2pdf from "html2pdf.js";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeFile } from "@tauri-apps/plugin-fs";
+
+// Custom styles for PDF generation to ensure single-page and premium look
+const pdfStyles = ``;
 
 const formatDateToDDMMYYYY = (dateString) => {
   if (!dateString) return "";
@@ -25,30 +31,46 @@ export default function Invoice() {
   const params = useParams();
   const { showToast } = useToast();
   const [invoiceData, setInvoiceData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const printRef = useRef();
 
-  const fetchInvoice = async (id) => {
+  const fetchInvoice = useCallback(async (id) => {
+    if (!id || id === "undefined") {
+      setLoading(false);
+      return;
+    }
     try {
+      setLoading(true);
       const data = await getInvoiceById(id);
       setInvoiceData(data);
-      localStorage.setItem("invoice-data",JSON.stringify(data));
+      localStorage.setItem("invoice-data", JSON.stringify(data));
     } catch (err) {
-      showToast(`Error fetching invoice: ${err.message}`, "error"); 
+      console.error("Error fetching invoice:", err);
+      showToast(`Error fetching invoice: ${err.message}`, "error");
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     if (params.id) {
       fetchInvoice(params.id);
     } else {
       const savedData = localStorage.getItem("invoice-data");
-      if (savedData) setInvoiceData(JSON.parse(savedData));
+      if (savedData) {
+        setInvoiceData(JSON.parse(savedData));
+      }
+      setLoading(false);
     }
-  }, [params.id]);
+  }, [params.id, fetchInvoice]);
 
   // --- Handlers ---
   const handleEdit = () => {
-    navigate(`/invoice-form/${params.id}`);
+    if (params.id) {
+      navigate(`/invoice-form/${params.id}`);
+    } else if (invoiceData?.invoice_id) {
+      navigate(`/invoice-form/${invoiceData.invoice_id}`);
+    }
   };
 
   // ✅ SIMPLIFIED PRINT HANDLER
@@ -56,10 +78,91 @@ export default function Invoice() {
     window.print();
   };
 
+  const handleSavePDF = async () => {
+    if (!invoiceData) {
+      showToast("No invoice data found to save.", "error");
+      return;
+    }
+
+    try {
+      const name = invoiceData.customer_name || invoiceData.ship_to || "Customer";
+      const billNo = invoiceData.invoice_id || invoiceData.bill_no || "NA";
+      const fileName = `Bill No - ${billNo} ${name}.pdf`;
+
+      showToast("Preparing single-page PDF...", "info");
+
+      const element = document.getElementById('print-section');
+      if (!element) {
+        throw new Error("Required content (#print-section) not found.");
+      }
+
+      // 1. Apply PDF-specific styles temporarily
+      const styleTag = document.createElement('style');
+      styleTag.innerHTML = pdfStyles;
+      document.head.appendChild(styleTag);
+
+      const h2p = (typeof html2pdf === 'function') ? html2pdf : (html2pdf.default || html2pdf);
+
+      const opt = {
+        margin: 0,
+        filename: fileName,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 3, // higher scale for better font rendering
+          useCORS: true,
+          logging: false,
+          letterRendering: true
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: 'avoid-all' } // Strongly avoid page breaks
+      };
+
+      try {
+        // Try native Tauri Dialog first
+        const filePath = await save({
+          filters: [{ name: 'PDF', extensions: ['pdf'] }],
+          defaultPath: fileName
+        });
+
+        if (filePath) {
+          showToast("Generating PDF content...", "info");
+          // Generate blob then write via FS
+          const pdfBlob = await h2p().set(opt).from(element).output('blob');
+          const arrayBuffer = await pdfBlob.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          await writeFile(filePath, uint8Array);
+          showToast("PDF saved to your chosen location!", "success");
+        } else {
+          // User cancelled dialog
+          showToast("Save cancelled", "info");
+        }
+      } catch (tauriErr) {
+        console.warn("Tauri native save failed, falling back to browser download:", tauriErr);
+        // Fallback to browser download if plugin is missing/failing
+        await h2p().set(opt).from(element).save();
+        showToast("PDF downloaded to your default folder.", "success");
+      } finally {
+        // 2. Clean up temporary styles
+        document.head.removeChild(styleTag);
+      }
+    } catch (err) {
+      console.error("PDF Final Error:", err);
+      showToast(`Failed to save PDF: ${err.message}`, "error");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center p-10 font-semibold bg-gray-100 dark:bg-gray-900 dark:text-gray-200 min-h-screen">
+        Loading invoice data...
+      </div>
+    );
+  }
+
   if (!invoiceData) {
     return (
       <div className="text-center p-10 font-semibold bg-gray-100 dark:bg-gray-900 dark:text-gray-200 min-h-screen">
-        Loading invoice data or no data found...
+        No invoice data found.
       </div>
     );
   }
@@ -74,6 +177,7 @@ export default function Invoice() {
             status={invoiceData.invoice_status}
             hideSave={true}
             handlePrint={handlePrint}
+            handleSavePDF={handleSavePDF}
           />
         </div>
 
@@ -102,7 +206,7 @@ export default function Invoice() {
             />
             <InvoiceItemsTable data={invoiceData} />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 text-sm">
               <SellerBankDetails data={invoiceData} />
               <InvoiceTotals data={invoiceData} />
             </div>

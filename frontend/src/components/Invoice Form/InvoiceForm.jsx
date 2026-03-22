@@ -7,7 +7,7 @@ import FormHeader from "./FormHeader";
 import ConfirmSaveModal from "../Reusables/ConfirmSaveModal";
 
 import { useToast } from "../../context/ToastContext"; // ✅ Global toast
-import { getAllCustomers, checkInvoice, getIdByName, createInvoice, updateInvoice } from "../../lib/api";
+import { getAllCustomers, checkInvoice, getIdByName, createInvoice, updateInvoice, getInvoiceById, getCustomerById } from "../../lib/api";
 
 const initialFormData = {
   shipTo: "",
@@ -57,50 +57,76 @@ export default function InvoiceForm() {
 
   useEffect(() => {
     // Only pre-fill form data from localStorage when EDITING an existing invoice
-    if (!isExistingInvoice) {
-      // Clear stale data so new invoice form starts blank
-      localStorage.removeItem("invoice-data");
-      localStorage.removeItem("customer-data");
-      return;
-    }
+    const loadInvoiceData = async () => {
+      if (!isExistingInvoice) {
+        // Clear stale data so new invoice form starts blank
+        localStorage.removeItem("invoice-data");
+        localStorage.removeItem("customer-data");
+        setFormData(initialFormData);
+        return;
+      }
 
-    const existingData = localStorage.getItem("invoice-data");
-    const existingCustomerData = localStorage.getItem("customer-data");
+      try {
+        let parsedData = null;
+        let parsedCustomer = null;
 
-    if (existingData) {
-      const parsedData = JSON.parse(existingData);
-      const parsedCustomer = existingCustomerData
-        ? JSON.parse(existingCustomerData)
-        : {};
+        // Try getting from API first as it's more reliable
+        try {
+          const apiInvoice = await getInvoiceById(invoiceIdParam);
+          parsedData = apiInvoice;
+          
+          if (apiInvoice.customer_id) {
+            try {
+              parsedCustomer = await getCustomerById(apiInvoice.customer_id);
+            } catch (custErr) {
+              console.warn("Could not fetch customer details:", custErr);
+            }
+          }
+        } catch (apiErr) {
+          console.warn("API fetch failed, trying localStorage:", apiErr);
+          const existingData = localStorage.getItem("invoice-data");
+          const existingCustomerData = localStorage.getItem("customer-data");
+          if (existingData) parsedData = JSON.parse(existingData);
+          if (existingCustomerData) parsedCustomer = JSON.parse(existingCustomerData);
+        }
 
-      const mergedData = {
-        ...initialFormData,
-        ...parsedData,
-        shipTo: parsedData.ship_to || parsedCustomer.name || "",
-        gstin: parsedCustomer.gstin || "N/A",
-        billNo: parsedData.bill_no || "",
-        address_line1: parsedCustomer.address_line1 || "N/A",
-        address_line2: parsedCustomer.address_line2 || "N/A",
-        date: parsedData.date
-          ? new Date(parsedData.date).toISOString().split("T")[0]
-          : "",
+        if (parsedData) {
+          const mergedData = {
+            ...initialFormData,
+            ...parsedData,
+            invoice_id: parsedData.invoice_id || invoiceIdParam,
+            shipTo: parsedData.ship_to || parsedCustomer?.name || "",
+            gstin: parsedCustomer?.gstin || "N/A",
+            billNo: parsedData.bill_no || "",
+            address_line1: parsedCustomer?.address_line1 || "N/A",
+            address_line2: parsedCustomer?.address_line2 || "N/A",
+            date: parsedData.date
+              ? new Date(parsedData.date).toISOString().split("T")[0]
+              : "",
 
-        grand_total: parsedData.grand_total || 0,
-        items:
-          parsedData.items && parsedData.items.length
-            ? parsedData.items.map((item) => ({
-                name: item.item_name || "",
-                hsn: item.hsn || "",
-                qty: Number(item.quantity) || 0,
-                rate: Number(item.price) || 0,
-                amount: Number(item.total) || 0,
-              }))
-            : [{ name: "", hsn: "", qty: 0, rate: 0, amount: 0 }],
-      };
+            grand_total: parsedData.grand_total || 0,
+            items:
+              parsedData.items && parsedData.items.length
+                ? parsedData.items.map((item) => ({
+                    name: item.item_name || "",
+                    hsn: item.hsn || "",
+                    qty: Number(item.quantity) || 0,
+                    rate: Number(item.price) || 0,
+                    amount: Number(item.total) || 0,
+                  }))
+                : [{ name: "", hsn: "", qty: 0, rate: 0, amount: 0 }],
+          };
 
-      setFormData(mergedData);
-    }
-  }, [isExistingInvoice]);
+          setFormData(mergedData);
+        }
+      } catch (error) {
+        console.error("Error loading invoice data:", error);
+        showToast("Failed to load invoice data", "error");
+      }
+    };
+
+    loadInvoiceData();
+  }, [isExistingInvoice, invoiceIdParam, showToast]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
