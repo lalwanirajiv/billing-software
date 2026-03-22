@@ -17,6 +17,7 @@ export default function InvoiceList() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [filteredInvoices, setFilteredInvoices] = useState([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
@@ -61,10 +62,14 @@ export default function InvoiceList() {
       const dateFilterMatch = dateFilter
         ? invoice.date && invoice.date.startsWith(dateFilter)
         : true;
-      return searchTermMatch && dateFilterMatch;
+      const statusFilterMatch =
+        statusFilter === "All" ||
+        (invoice.invoice_status &&
+          invoice.invoice_status.toLowerCase() === statusFilter.toLowerCase());
+      return searchTermMatch && dateFilterMatch && statusFilterMatch;
     });
     setFilteredInvoices(results);
-  }, [searchTerm, dateFilter, invoices]);
+  }, [searchTerm, dateFilter, statusFilter, invoices]);
 
   useEffect(() => {
     if (toast.message) {
@@ -205,6 +210,8 @@ export default function InvoiceList() {
             setDateFilter={setDateFilter}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
             onExportClick={() => setIsExportModalOpen(true)}
           />
 
