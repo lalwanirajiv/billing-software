@@ -9,7 +9,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { getAllInvoices } from "../../lib/api";
+import { getRevenueTimeline } from "../../lib/api";
 
 const RevenueChart = () => {
   const [monthlyRevenueData, setMonthlyRevenueData] = useState([]);
@@ -17,37 +17,15 @@ const RevenueChart = () => {
   useEffect(() => {
     const fetchRevenue = async () => {
       try {
-        const invoices = await getAllInvoices();
-        const revenueMap = {};
-        invoices.forEach((inv) => {
-          const month = new Date(inv.date).toLocaleString("default", {
-            month: "short",
-          });
-          revenueMap[month] =
-            (revenueMap[month] || 0) + Number(inv.grand_total);
-        });
-        const months = [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
-        ];
-        const chartData = months.map((month) => ({
-          name: month,
-          revenue: revenueMap[month] || 0,
+        const res = await getRevenueTimeline();
+        const chartData = (res.data || []).map(item => ({
+          name: new Date(item.month + "-01").toLocaleString("default", { month: "short" }),
+          revenue: item.revenue
         }));
 
         setMonthlyRevenueData(chartData);
       } catch (err) {
-        console.error("Error fetching invoices:", err);
+        console.error("Error fetching revenue timeline:", err);
       }
     };
 

@@ -3,10 +3,7 @@
 @tailwind utilities;
 
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
 }
 
 .logo {
@@ -53,5 +50,10 @@
 @media print {
   .no-print {
     display: none !important;
+  }
+  
+  * {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 400 !important;
   }
 }

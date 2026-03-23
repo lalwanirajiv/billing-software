@@ -3,10 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { DollarSign, Users, Clock, FileText } from "lucide-react";
 import StatCard from "./StatCard";
 import StatusCarousel from "./StatusCarousel";
+import AmountCarousel from "./AmountCarousel";
 import TopCustomers from "./TopCustomers";
 import InvoiceStatusChart from "./InvoiceStatusChart";
 import RevenueChart from "./RevenueChart";
 import RecentInvoices from "./RecentInvoices";
+import TopItemsChart from "./TopItemsChart";
+import TransactionsChart from "./TransactionsChart";
 import { getDashboardStats } from "../../lib/api";
 
 export default function Dashboard() {
@@ -82,20 +85,12 @@ export default function Dashboard() {
             change={`${stats.totalRevenueChange}%`}
             changeType={stats.totalRevenueChange >= 0 ? "positive" : "negative"}
           />
-          <StatCard
-            title="Overdue Amount"
-            value={`₹${Number(stats.overdueAmount).toLocaleString()}`}
-            icon={Clock}
-            change={`${stats.overdueAmountChange}%`}
-            changeType={
-              stats.overdueAmountChange >= 0 ? "positive" : "negative"
-            }
-          />
+          <AmountCarousel stats={stats} />
           <StatCard
             title="Total Customers"
             value={stats.totalCustomers}
             icon={Users}
-            change={`${stats.totalCustomersChange}`}
+            change={`${stats.totalCustomersChange}%`}
             changeType={
               stats.totalCustomersChange >= 0 ? "positive" : "negative"
             }
@@ -113,7 +108,13 @@ export default function Dashboard() {
             <InvoiceStatusChart />
           </div>
           <div className="lg:col-span-2">
+            <TopItemsChart />
+          </div>
+          <div className="lg:col-span-2">
             <TopCustomers data={topCustomers} />
+          </div>
+          <div className="lg:col-span-2">
+            <TransactionsChart />
           </div>
         </div>
       </div>
