@@ -167,7 +167,7 @@ export default function CustomerList() {
                   placeholder="Search customers..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
               
@@ -198,7 +198,7 @@ export default function CustomerList() {
 
                 <Link
                   to="/create-customer"
-                  className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
+                  className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap"
                 >
                   Add New Customer
                 </Link>
@@ -306,7 +306,7 @@ export default function CustomerList() {
                             navigate(`/edit-customer/${customer.customer_id}`);
                           }}
                           role="button"
-                          className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:border-blue-500 transition"
+                          className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-indigo-600 hover:border-indigo-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-indigo-400 dark:hover:border-indigo-500 transition"
                           title="Edit Customer"
                         >
                           <EditIcon className="w-4 h-4" />

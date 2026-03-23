@@ -100,7 +100,7 @@ export default function CustomerForm() {
 
             <button
               type="submit"
-              className="w-full md:w-auto px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md disabled:bg-gray-400"
+              className="w-full md:w-auto px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-md disabled:bg-gray-400"
               disabled={saveStatus === "saving"}
             >
               {saveStatus === "saving" 

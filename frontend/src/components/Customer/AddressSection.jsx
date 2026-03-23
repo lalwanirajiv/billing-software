@@ -19,7 +19,7 @@ const AddressSection = ({ customerData, handleChange }) => (
         onChange={handleChange}
         required
         className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md 
-                   focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100
+                   focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100
                    invalid:border-red-500 invalid:ring-red-500"
       />
     </div>
@@ -40,7 +40,7 @@ const AddressSection = ({ customerData, handleChange }) => (
         value={customerData.address_line2}
         onChange={handleChange}
         className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md 
-                   focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+                   focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
       />
     </div>
   </div>

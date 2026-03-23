@@ -3,7 +3,7 @@ import { UserPlusIcon } from "../Reusables/Icons";
 const FormHeader = ({ title = "Add New Customer" }) => (
   <div className="flex justify-between items-start mb-8">
     <div className="flex items-center gap-4">
-      <div className="bg-blue-100 dark:bg-blue-900/50 p-3 rounded-full text-blue-600 dark:text-blue-400">
+      <div className="bg-indigo-100 dark:bg-indigo-900/50 p-3 rounded-full text-indigo-600 dark:text-indigo-400">
         <UserPlusIcon />
       </div>
       <div>

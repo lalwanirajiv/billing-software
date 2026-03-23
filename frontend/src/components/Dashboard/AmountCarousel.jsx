@@ -83,7 +83,7 @@ export default function AmountCarousel({ stats }) {
             <div 
               key={idx}
               className={`h-1 rounded-full transition-all duration-500 ${
-                idx === currentIndex ? "w-6 bg-blue-500" : "w-1.5 bg-gray-200 dark:bg-gray-700"
+                idx === currentIndex ? "w-6 bg-indigo-600" : "w-1.5 bg-gray-200 dark:bg-gray-700"
               }`}
             />
           ))}

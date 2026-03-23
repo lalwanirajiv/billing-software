@@ -90,7 +90,16 @@ const InvoiceStatusChart = () => {
               />
             ))}
           </Pie>
-          <Tooltip />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "#1f2937",
+              border: "none",
+              borderRadius: "12px",
+              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+            }}
+            itemStyle={{ color: "#f3f4f6", fontSize: "14px", fontWeight: "900" }}
+            labelStyle={{ color: "#9ca3af", marginBottom: "4px", fontSize: "12px", fontWeight: "900", textTransform: "uppercase" }}
+          />
           <Legend />
         </PieChart>
       </ResponsiveContainer>

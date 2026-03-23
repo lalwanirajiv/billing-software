@@ -46,6 +46,7 @@ export default function Reports() {
     customers: [],
     chart: [],
     statusBreakdown: [],
+    taxComparison: [],
     loading: false,
     error: null
   });
@@ -67,7 +68,8 @@ export default function Reports() {
         taxMetrics: { taxable_value: 0, total_tax: 0, total_invoices: 0, total_amount: 0 },
         customers: [],
         chart: [],
-        statusBreakdown: []
+        statusBreakdown: [],
+        taxComparison: []
       };
 
       // 1. Fetch Sales (Standard)
@@ -108,11 +110,13 @@ export default function Reports() {
         newState.chart = processedChartData;
 
         const totalAmount = newState.sales.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+        const taxableValue = newState.sales.reduce((sum, item) => sum + (Number(item.taxable_value) || 0), 0);
         const totalTax = newState.sales.reduce((sum, item) => sum + (Number(item.tax) || 0), 0);
+        
         newState.taxMetrics = {
-          total_amount: totalAmount,
-          taxable_value: totalAmount - totalTax,
-          total_tax: totalTax,
+          total_amount: Number(totalAmount.toFixed(2)),
+          taxable_value: Number(taxableValue.toFixed(2)),
+          total_tax: Number(totalTax.toFixed(2)),
           total_invoices: newState.sales.length
         };
       } 
@@ -121,14 +125,21 @@ export default function Reports() {
         const tData = tax?.data || {};
         newState.taxMetrics = {
            ...tData,
-           total_amount: (Number(tData.taxable_value) || 0) + (Number(tData.total_tax) || 0),
-           total_invoices: newState.sales.length
+           total_amount: Number((Number(tData.total_amount) || 0).toFixed(2)),
+           taxable_value: Number((Number(tData.taxable_value) || 0).toFixed(2)),
+           total_tax: Number((Number(tData.total_tax) || 0).toFixed(2)),
+           total_invoices: Number(tData.total_invoices) || 0
         };
         
+        newState.taxComparison = [
+          { name: 'Intra-State', count: Number(tData.state_count) || 0, amount: Number(tData.state_amount) || 0 },
+          { name: 'Inter-State', count: Number(tData.interstate_count) || 0, amount: Number(tData.interstate_amount) || 0 }
+        ];
+
         newState.chart = [
-          { name: 'CGST', value: Number(tData.total_cgst) || 0 },
-          { name: 'SGST', value: Number(tData.total_sgst) || 0 },
-          { name: 'IGST', value: Number(tData.total_igst) || 0 },
+          { name: 'CGST', value: Number((Number(tData.total_cgst) || 0).toFixed(2)) },
+          { name: 'SGST', value: Number((Number(tData.total_sgst) || 0).toFixed(2)) },
+          { name: 'IGST', value: Number((Number(tData.total_igst) || 0).toFixed(2)) },
         ].filter(d => d.value > 0);
       } 
       else if (reportType === "customerReport") {
@@ -137,11 +148,12 @@ export default function Reports() {
         
         newState.chart = newState.customers.slice(0, 10).map(c => ({
           name: c.customer,
-          sales: Number(c.total_revenue) || 0,
+          sales: Number((Number(c.total_revenue) || 0).toFixed(2)),
           count: Number(c.total_invoices) || 0
         }));
 
-        newState.taxMetrics.total_amount = newState.customers.reduce((sum, c) => sum + (Number(c.total_revenue) || 0), 0);
+        const totalAmt = newState.customers.reduce((sum, c) => sum + (Number(c.total_revenue) || 0), 0);
+        newState.taxMetrics.total_amount = Number(totalAmt.toFixed(2));
         newState.taxMetrics.total_invoices = newState.sales.length;
       }
 
@@ -218,6 +230,7 @@ export default function Reports() {
           reportType={reportType}
           chart={reportState.chart}
           statusBreakdown={reportState.statusBreakdown}
+          taxComparison={reportState.taxComparison}
           loading={reportState.loading}
         />
 

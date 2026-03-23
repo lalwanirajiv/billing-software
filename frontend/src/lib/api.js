@@ -243,6 +243,8 @@ export const getDashboardStats = async () => {
     const lastMonthCondition = "strftime('%Y-%m', date) = strftime('%Y-%m', 'now', '-1 month')";
 
     const totalRevenueCurrentMonth = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE ${currentMonthCondition}`);
+    const prevTotalRevenue = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE ${lastMonthCondition}`);
+    
     const totalRevenue = await runQuery(`SELECT SUM(grand_total) FROM invoices`);
     const overdueAmount = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Overdue'`);
     const dueAmount = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Due'`);
@@ -251,15 +253,21 @@ export const getDashboardStats = async () => {
     const invoicesDue = await runQuery(`SELECT COUNT(*) FROM invoices WHERE invoice_status='Due'`);
     const invoicesPaid = await runQuery(`SELECT COUNT(*) FROM invoices WHERE invoice_status='Paid'`);
     const invoicesOverdue = await runQuery(`SELECT COUNT(*) FROM invoices WHERE invoice_status='Overdue'`);
+    
+    // Growth of the total base (Total Now vs Total at start of month)
     const totalCustomers = await runQuery(`SELECT COUNT(*) FROM customers WHERE is_deleted = 0`);
+    const totalCustomersStartOfMonth = await runQuery(`
+        SELECT COUNT(*) FROM customers 
+        WHERE is_deleted = 0 
+        AND date(created_at) < date('now', 'start of month')
+    `);
 
-    const prevTotalRevenue = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE ${lastMonthCondition}`);
     const prevOverdueAmount = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Overdue' AND ${lastMonthCondition}`);
-    const prevTotalCustomers = await runQuery(`SELECT COUNT(*) FROM customers WHERE is_deleted = 0 AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', '-1 month')`);
 
     return {
         data: {
             totalRevenueCurrentMonth: totalRevenueCurrentMonth || 0,
+            // Revenue Change: This Month Performance vs Last Month Performance
             totalRevenueChange: Number(calcChange(totalRevenueCurrentMonth || 0, prevTotalRevenue || 0)),
             overdueAmount: overdueAmount || 0,
             dueAmount: dueAmount || 0,
@@ -271,7 +279,8 @@ export const getDashboardStats = async () => {
             invoicesDueChange: null,
             totalRevenue: Number(totalRevenue) || 0,
             totalCustomers: Number(totalCustomers) || 0,
-            totalCustomersChange: Number(calcChange(totalCustomers || 0, prevTotalCustomers || 0))
+            // Customer Change: Growth of the total base this month
+            totalCustomersChange: Number(calcChange(totalCustomers || 0, totalCustomersStartOfMonth || 0))
         }
     };
 };
@@ -334,9 +343,9 @@ export const getSalesReport = async (startDate, endDate) => {
 
   // Using a more inclusive query to capture NULL dates and edge cases
   const res = await db.select(
-    `SELECT invoice_id, date, bill_no AS invoice, ship_to AS customer, grand_total AS amount, (cgst + sgst + igst) AS tax, invoice_status
+    `SELECT invoice_id, date, bill_no AS invoice, ship_to AS customer, grand_total AS amount, (sub_total) AS taxable_value, (cgst + sgst + igst) AS tax, invoice_status
      FROM invoices
-     WHERE (date BETWEEN $1 AND $2) OR (date IS NULL AND $1 = '1900-01-01')
+     WHERE date BETWEEN $1 AND $2
      ORDER BY date DESC, bill_no DESC`,
     [start, end]
   );
@@ -354,7 +363,7 @@ export const getInvoiceStatusReport = async (startDate, endDate) => {
         COUNT(*) as count, 
         SUM(grand_total) as amount
      FROM invoices
-     WHERE (date BETWEEN $1 AND $2) OR (date IS NULL AND $1 = '1900-01-01')
+     WHERE date BETWEEN $1 AND $2
      GROUP BY invoice_status`,
     [start, end]
   );
@@ -371,13 +380,24 @@ export const getTaxReport = async (startDate, endDate) => {
         SUM(cgst) AS total_cgst, 
         SUM(sgst) AS total_sgst, 
         SUM(igst) AS total_igst, 
-        (SUM(cgst) + SUM(sgst) + SUM(igst)) AS total_tax,
-        COUNT(*) as total_invoices
+        SUM(cgst + sgst + igst) AS total_tax,
+        SUM(grand_total) AS total_amount,
+        COUNT(*) as total_invoices,
+        SUM(CASE WHEN igst > 0 THEN 1 ELSE 0 END) as interstate_count,
+        SUM(CASE WHEN igst > 0 THEN 0 ELSE 1 END) as state_count,
+        SUM(CASE WHEN igst > 0 THEN grand_total ELSE 0 END) as interstate_amount,
+        SUM(CASE WHEN igst > 0 THEN 0 ELSE grand_total END) as state_amount
      FROM invoices
      WHERE date BETWEEN $1 AND $2`,
     [start, end]
   );
-  return { data: res[0] || {} };
+  return { 
+    data: res[0] || { 
+      taxable_value: 0, total_cgst: 0, total_sgst: 0, total_igst: 0, total_tax: 0, 
+      total_amount: 0, total_invoices: 0, interstate_count: 0, state_count: 0, 
+      interstate_amount: 0, state_amount: 0 
+    } 
+  };
 };
 
 export const getCustomerDetailedReport = async (startDate, endDate) => {

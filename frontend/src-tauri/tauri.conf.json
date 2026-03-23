@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "My Billing Software",
+        "title": "Billing Software",
         "width": 1200,
         "height": 800,
         "resizable": true,
@@ -36,7 +36,9 @@
   },
   "plugins": {
     "sql": {
-      "preload": ["sqlite:billing.db"]
+      "preload": [
+        "sqlite:billing.db"
+      ]
     },
     "dialog": {},
     "fs": {}

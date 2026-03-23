@@ -25,7 +25,7 @@ export const InvoiceTable = ({
           {!(searchTerm || dateFilter) && (
             <Link
               to="/invoice-form"
-              className="text-blue-600 dark:text-blue-400 hover:underline"
+              className="text-indigo-600 dark:text-indigo-400 hover:underline"
             >
               Create a new invoice
             </Link>
@@ -113,7 +113,7 @@ export const InvoiceTable = ({
                   <span
                     onClick={(e) => onEditClick(e, invoice.invoice_id)}
                     role="button"
-                    className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:border-blue-500 transition"
+                    className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-indigo-600 hover:border-indigo-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-indigo-400 dark:hover:border-indigo-500 transition"
                     title="Edit Invoice"
                   >
                     <EditIcon className="w-4 h-4" />

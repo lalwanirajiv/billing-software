@@ -28,7 +28,7 @@ export const InvoiceListHeader = ({
             className="w-full pl-3 pr-8 py-2 border rounded-lg bg-white dark:bg-gray-800 
                        text-gray-900 dark:text-gray-100 
                        border-gray-300 dark:border-gray-600 
-                       focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer text-sm font-medium"
+                       focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer text-sm font-medium"
           >
             {statuses.map((status) => (
               <option key={status} value={status}>
@@ -52,7 +52,7 @@ export const InvoiceListHeader = ({
             className="pl-10 pr-4 py-2 border rounded-lg bg-white dark:bg-gray-800 
            text-gray-900 dark:text-gray-100 
            border-gray-300 dark:border-gray-600 
-           focus:ring-2 focus:ring-blue-500 
+           focus:ring-2 focus:ring-indigo-500 
            appearance-none 
            [&::-webkit-calendar-picker-indicator]:opacity-0 
            [&::-webkit-calendar-picker-indicator]:absolute 
@@ -81,7 +81,7 @@ export const InvoiceListHeader = ({
             className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white dark:bg-gray-800 
                        text-gray-900 dark:text-gray-100 
                        border-gray-300 dark:border-gray-600 
-                       focus:ring-2 focus:ring-blue-500"
+                       focus:ring-2 focus:ring-indigo-500"
           />
         </div>
 
@@ -95,7 +95,7 @@ export const InvoiceListHeader = ({
           </button>
           <Link
             to="/invoice-form"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-center hover:bg-blue-700 flex items-center justify-center font-bold shadow-lg shadow-blue-100 dark:shadow-none"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-center hover:bg-indigo-700 flex items-center justify-center font-bold shadow-lg shadow-indigo-100 dark:shadow-none"
           >
             Add New Invoice
           </Link>
