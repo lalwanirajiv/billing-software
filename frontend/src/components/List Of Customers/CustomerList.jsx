@@ -257,7 +257,8 @@ export default function CustomerList() {
                 {filteredCustomers.map((customer) => (
                   <tr
                     key={customer.customer_id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    onClick={() => navigate(`/customer/${customer.customer_id}`)}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
                   >
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {customers.findIndex(
@@ -266,12 +267,9 @@ export default function CustomerList() {
                     </td>
 
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <Link 
-                        to={`/customer/${customer.customer_id}`}
-                        className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline transition-colors leading-tight uppercase tracking-tight"
-                      >
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white leading-tight uppercase tracking-tight">
                         {customer.name}
-                      </Link>
+                      </span>
                     </td>
 
                     {/* Truncated address */}
@@ -303,7 +301,10 @@ export default function CustomerList() {
                     <td className="px-3 py-2 whitespace-nowrap text-left text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
                         <span
-                          onClick={() => navigate(`/edit-customer/${customer.customer_id}`)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/edit-customer/${customer.customer_id}`);
+                          }}
                           role="button"
                           className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:border-blue-500 transition"
                           title="Edit Customer"
@@ -311,7 +312,10 @@ export default function CustomerList() {
                           <EditIcon className="w-4 h-4" />
                         </span>
                         <span
-                          onClick={() => handleDeleteClick(customer)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(customer);
+                          }}
                           role="button"
                           className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-red-600 hover:border-red-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-red-400 dark:hover:border-red-500 transition"
                           title="Delete Customer"

@@ -42,8 +42,7 @@ const Header = () => {
     "block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700";
 
   return (
-    <div className="no-print">
-    <header className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50">
+    <header className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50 no-print">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -195,7 +194,6 @@ const Header = () => {
         )}
       </nav>
     </header>
-    </div>
   );
 };
 

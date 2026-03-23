@@ -245,6 +245,9 @@ export const getDashboardStats = async () => {
     const totalRevenueCurrentMonth = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE ${currentMonthCondition}`);
     const totalRevenue = await runQuery(`SELECT SUM(grand_total) FROM invoices`);
     const overdueAmount = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Overdue'`);
+    const dueAmount = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Due'`);
+    const paidAmount = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Paid'`);
+    
     const invoicesDue = await runQuery(`SELECT COUNT(*) FROM invoices WHERE invoice_status='Due'`);
     const invoicesPaid = await runQuery(`SELECT COUNT(*) FROM invoices WHERE invoice_status='Paid'`);
     const invoicesOverdue = await runQuery(`SELECT COUNT(*) FROM invoices WHERE invoice_status='Overdue'`);
@@ -259,6 +262,8 @@ export const getDashboardStats = async () => {
             totalRevenueCurrentMonth: totalRevenueCurrentMonth || 0,
             totalRevenueChange: Number(calcChange(totalRevenueCurrentMonth || 0, prevTotalRevenue || 0)),
             overdueAmount: overdueAmount || 0,
+            dueAmount: dueAmount || 0,
+            paidAmount: paidAmount || 0,
             overdueAmountChange: Number(calcChange(overdueAmount || 0, prevOverdueAmount || 0)),
             invoicesDue: Number(invoicesDue) || 0,
             invoicesPaid: Number(invoicesPaid) || 0,
@@ -284,15 +289,38 @@ export const getInvoiceStatusCounts = async () => {
 
 export const getRevenueTimeline = async () => {
     const db = await getDB();
-    // Simulate what revenue route used to do, typically group by months or days
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // 1-12
+    const currentYear = now.getFullYear();
+    
+    // Financial Year starts in April (4)
+    const fyStartYear = currentMonth >= 4 ? currentYear : currentYear - 1;
+    const fyEndYear = fyStartYear + 1;
+    
+    const startDate = `${fyStartYear}-04-01`;
+    const endDate = `${fyEndYear}-03-31`;
+
     const res = await db.select(`
-        SELECT strftime('%Y-%m', date) as month, SUM(grand_total) as revenue 
+        SELECT strftime('%Y-%m', date) as month, SUM(grand_total) as revenue, COUNT(*) as count
         FROM invoices 
+        WHERE date BETWEEN $1 AND $2
         GROUP BY month 
-        ORDER BY month ASC 
-        LIMIT 6
-    `);
-    return { data: res };
+        ORDER BY month ASC
+    `, [startDate, endDate]);
+    
+    const fullYearData = [];
+    for (let m = 0; m < 12; m++) {
+        const monthDate = new Date(fyStartYear, 3 + m, 1);
+        const isoMonth = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+        const existing = res.find(r => r.month === isoMonth);
+        fullYearData.push({
+            month: isoMonth,
+            revenue: existing ? Number(existing.revenue) : 0,
+            count: existing ? Number(existing.count) : 0
+        });
+    }
+    
+    return { data: fullYearData };
 };
 
 // ================= DETAILED REPORTS ================= //
@@ -378,6 +406,19 @@ export const getRevenueChartData = async (startDate, endDate) => {
      GROUP BY name
      ORDER BY name ASC`,
     [start, end]
+  );
+  return { data: res };
+};
+
+export const getTopSellingItems = async (limit = 5) => {
+  const db = await getDB();
+  const res = await db.select(
+    `SELECT item_name as name, SUM(quantity) as value, SUM(total) as revenue
+     FROM items
+     GROUP BY item_name
+     ORDER BY revenue DESC
+     LIMIT $1`,
+    [limit]
   );
   return { data: res };
 };
