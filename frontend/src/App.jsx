@@ -12,6 +12,7 @@ import Header from "./components/Header/Header";
 import { ToastProvider } from "./context/ToastContext"; // ✅ global toast
 import Reports from "./components/Reports/Reports";
 import CustomerAccount from "./components/List Of Customers/CustomerAccount";
+import Footer from "./components/Footer/Footer";
 
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 
@@ -68,21 +69,25 @@ function App() {
     <Router>
       <TitleUpdater />
       <ToastProvider>
-        <Header />
-
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/invoice" element={<Invoice />} />
-          <Route path="/invoice/:id" element={<Invoice />} />
-          <Route path="/invoice-form" element={<InvoiceForm />} />
-          <Route path="/invoice-form/:id" element={<InvoiceForm />} />
-          <Route path="/create-customer" element={<CustomerForm />} />
-          <Route path="/edit-customer/:id" element={<CustomerForm />} />
-          <Route path="/customers" element={<CustomerList />} />
-          <Route path="/invoices" element={<InvoiceList />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/customer/:id" element={<CustomerAccount />} />
-        </Routes>
+        <div className="flex flex-col min-h-screen">
+          <Header />
+          <main className="flex-grow">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/invoice" element={<Invoice />} />
+              <Route path="/invoice/:id" element={<Invoice />} />
+              <Route path="/invoice-form" element={<InvoiceForm />} />
+              <Route path="/invoice-form/:id" element={<InvoiceForm />} />
+              <Route path="/create-customer" element={<CustomerForm />} />
+              <Route path="/edit-customer/:id" element={<CustomerForm />} />
+              <Route path="/customers" element={<CustomerList />} />
+              <Route path="/invoices" element={<InvoiceList />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/customer/:id" element={<CustomerAccount />} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
       </ToastProvider>
     </Router>
   );

@@ -32,7 +32,7 @@ const TopInfoPanel = ({
             onChange={handleChange}
             onFocus={() => setIsSuggestionsVisible(true)}
             onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 150)}
-            className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+            className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
             disabled={isLoadingCustomers}
             autoComplete="off"
             placeholder={
@@ -66,7 +66,7 @@ const TopInfoPanel = ({
               >
                 <a
                   href="/create-customer"
-                  className="text-blue-600 dark:text-blue-400 hover:underline text-sm font-semibold"
+                  className="text-indigo-600 dark:text-indigo-400 hover:underline text-sm font-semibold"
                 >
                   + Add New Customer
                 </a>
@@ -150,7 +150,7 @@ const TopInfoPanel = ({
           placeholder="e.g., INV-001"
           value={formData.billNo}
           onChange={handleChange}
-          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
         />
       </div>
       <div>
@@ -166,7 +166,7 @@ const TopInfoPanel = ({
           name="date"
           value={formData.date || ""}
           onChange={handleChange}
-          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 [color-scheme:light] dark:[color-scheme:dark]"
+          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 [color-scheme:light] dark:[color-scheme:dark]"
         />
       </div>
       <div>
@@ -183,7 +183,7 @@ const TopInfoPanel = ({
           placeholder="e.g., Net 30 Days"
           value={formData.terms || "30 Days"}
           onChange={handleChange}
-          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
         />
       </div>
       <div>
@@ -198,7 +198,7 @@ const TopInfoPanel = ({
           name="state"
           value={formData.state}
           onChange={handleChange}
-          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
         >
           <option value="State">State</option>
           <option value="Interstate">Interstate</option>

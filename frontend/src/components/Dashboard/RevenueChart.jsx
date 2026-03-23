@@ -43,13 +43,22 @@ const RevenueChart = () => {
           <XAxis dataKey="name" stroke="#9ca3af" />
           <YAxis stroke="#9ca3af" />
           <Tooltip
-            contentStyle={{ backgroundColor: "#1f2937", border: "none" }}
+            contentStyle={{
+              backgroundColor: "#1f2937",
+              border: "none",
+              borderRadius: "12px",
+              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+            }}
+            itemStyle={{ color: "#f3f4f6", fontSize: "14px", fontWeight: "900" }}
+            labelStyle={{ color: "#9ca3af", marginBottom: "4px", fontSize: "12px", fontWeight: "900", textTransform: "uppercase" }}
+            formatter={(value) => [`₹${Number(value).toLocaleString()}`, "Revenue"]}
+            cursor={{ fill: 'rgba(79, 70, 229, 0.03)' }}
           />
           <Legend />
           <Line
             type="monotone"
             dataKey="revenue"
-            stroke="#3b82f6"
+            stroke="#4f46e5"
             strokeWidth={2}
             activeDot={{ r: 6 }}
           />

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MenuIcon, CloseIcon } from "../Reusables/Icons";
+import { FileText } from "lucide-react";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -33,7 +34,7 @@ const Header = () => {
 
   const navLinkClasses = `
     text-gray-600 dark:text-gray-300 
-    hover:text-blue-600 dark:hover:text-blue-400 
+    hover:text-indigo-600 dark:hover:text-indigo-400 
     font-medium transition-colors 
     cursor-pointer select-none
   `;
@@ -48,20 +49,9 @@ const Header = () => {
           {/* Logo */}
           <div className="flex-shrink-0">
             <Link to="/" className="flex items-center space-x-2">
-              <svg
-                className="w-8 h-8 text-blue-600 dark:text-blue-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6a2 2 0 100-4 2 2 0 000 4zm0 12a2 2 0 100-4 2 2 0 000 4z"
-                ></path>
-              </svg>
+              <div className="bg-indigo-600 p-1.5 rounded-lg flex items-center justify-center">
+                <FileText className="text-white w-5 h-5" />
+              </div>
               <span className="text-xl font-bold text-gray-800 dark:text-gray-200">
                 BillingApp
               </span>
@@ -147,7 +137,7 @@ const Header = () => {
           <div className="md:hidden pt-2 pb-4 space-y-1">
             <Link
               to="/dashboard"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
               Dashboard
             </Link>
@@ -157,13 +147,13 @@ const Header = () => {
             </h3>
             <Link
               to="/invoice-form"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
               Create Invoice
             </Link>
             <Link
               to="/invoices"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
               View All Invoices
             </Link>
@@ -173,20 +163,20 @@ const Header = () => {
             </h3>
             <Link
               to="/create-customer"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
               Create Customer
             </Link>
             <Link
               to="/customers"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
               View All Customers
             </Link>
 
             <Link
               to="/reports"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
               Reports
             </Link>

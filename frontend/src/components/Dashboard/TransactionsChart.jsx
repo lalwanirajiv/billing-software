@@ -66,14 +66,16 @@ const TransactionsChart = () => {
               contentStyle={{
                 backgroundColor: "#1f2937",
                 border: "none",
-                borderRadius: "8px",
-                color: "#fff",
+                borderRadius: "12px",
+                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
               }}
-              cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
+              itemStyle={{ color: "#f3f4f6", fontSize: "14px", fontWeight: "900" }}
+              labelStyle={{ color: "#9ca3af", marginBottom: "4px", fontSize: "12px", fontWeight: "900", textTransform: "uppercase" }}
+              cursor={{ fill: 'rgba(79, 70, 229, 0.05)' }}
             />
             <Bar 
               dataKey="count" 
-              fill="#8b5cf6" 
+              fill="#4f46e5" 
               radius={[4, 4, 0, 0]} 
               barSize={30}
               animationDuration={1500}

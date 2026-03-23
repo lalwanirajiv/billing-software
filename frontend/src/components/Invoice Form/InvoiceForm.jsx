@@ -354,7 +354,7 @@ export default function InvoiceForm() {
             <div className="flex justify-end pt-4">
               <button
                 type="submit"
-                className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors shadow-md"
+                className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-md"
               >
                 {isExistingInvoice
                   ? "Update Invoice"

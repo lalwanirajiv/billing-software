@@ -49,7 +49,7 @@ export default function StatusCarousel({ stats }) {
   return (
     <div 
       onClick={() => navigate(`/invoices?status=${currentItem.status}`)}
-      className={`group relative overflow-hidden bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 cursor-pointer transition-all duration-500 hover:shadow-lg hover:-translate-y-1 hover:border-blue-400 dark:hover:border-blue-500`}
+      className={`group relative overflow-hidden bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 cursor-pointer transition-all duration-500 hover:shadow-lg hover:-translate-y-1 hover:border-indigo-400 dark:hover:border-indigo-500`}
     >
       <div className="relative z-10 flex flex-col h-full justify-between">
         <div className="flex justify-between items-start">
@@ -58,7 +58,7 @@ export default function StatusCarousel({ stats }) {
           </div>
           <ChevronRight 
             size={20} 
-            className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" 
+            className="text-gray-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" 
           />
         </div>
 
@@ -88,7 +88,7 @@ export default function StatusCarousel({ stats }) {
             <div 
               key={idx}
               className={`h-1 rounded-full transition-all duration-500 ${
-                idx === currentIndex ? "w-6 bg-blue-500" : "w-1.5 bg-gray-200 dark:bg-gray-700"
+                idx === currentIndex ? "w-6 bg-indigo-600" : "w-1.5 bg-gray-200 dark:bg-gray-700"
               }`}
             />
           ))}
