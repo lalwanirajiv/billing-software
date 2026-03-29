@@ -4,7 +4,7 @@ import { DeleteConfirmationModal } from "./DeleteConfirmationModel";
 import { Toast } from "../Reusables/Toast";
 import { EditIcon, TrashIcon, SearchIcon } from "../Reusables/Icons";
 import { getAllCustomers, deleteCustomer } from "../../lib/api";
-import { FileDown, Download, Printer } from "lucide-react";
+import { Calendar, FileDown, FileText, Download, Printer, Users } from "lucide-react";
 import { BackButton } from "../Reusables/BackButton";
 
 export default function CustomerList() {
@@ -198,9 +198,10 @@ export default function CustomerList() {
 
                 <Link
                   to="/create-customer"
-                  className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap"
+                  className="btn-cta-primary whitespace-nowrap"
                 >
-                  Add New Customer
+                  <Users size={20} />
+                  <span>Add New Customer</span>
                 </Link>
               </div>
             </div>

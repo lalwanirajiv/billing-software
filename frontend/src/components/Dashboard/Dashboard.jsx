@@ -63,15 +63,17 @@ export default function Dashboard() {
           <div className="flex items-center gap-4 mt-4 sm:mt-0">
             <Link
               to="/invoice-form"
-              className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+              className="btn-cta-primary"
             >
-              Create Invoice
+              <FileText size={20} />
+              <span>Create Invoice</span>
             </Link>
             <Link
               to="/create-customer"
-              className="px-4 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors border border-gray-300 dark:border-gray-600"
+              className="btn-cta-secondary"
             >
-              Add Customer
+              <Users size={20} />
+              <span>Add Customer</span>
             </Link>
           </div>
         </div>

@@ -85,14 +85,28 @@ export const getTopCustomers = async (limit = 5) => {
 
 export const createInvoice = async (data) => {
   const db = await getDB();
-  const { ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, items, customer_id } = data;
+  const { ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, discount, items, customer_id } = data;
 
   if (!ship_to || ship_to.trim() === "") throw new Error("Customer Name is required");
 
   const result = await db.execute(
-    `INSERT INTO invoices (ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, customer_id, invoice_status, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'Due', CURRENT_TIMESTAMP)`,
-    [ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, customer_id]
+    `INSERT INTO invoices (ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, discount, customer_id, invoice_status, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'Due', CURRENT_TIMESTAMP)`,
+    [
+      ship_to || "",
+      /^\d+(\.\d+)?$/.test(String(bill_no || "")) ? String(parseInt(bill_no, 10)) : String(bill_no || ""),
+      date || null,
+      terms_of_payment || "30 Days",
+      state || "State",
+      Number(total_quantity) || 0,
+      Number(sub_total) || 0,
+      Number(cgst) || 0,
+      Number(sgst) || 0,
+      Number(igst) || 0,
+      Number(grand_total) || 0,
+      Number(discount) || 0,
+      customer_id || null,
+    ]
   );
   const invoiceId = result.lastInsertId;
 
@@ -189,13 +203,28 @@ export const getRecentInvoices = async (limit = 5) => {
 
 export const updateInvoice = async (id, data) => {
   const db = await getDB();
-  const { ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, items, customer_id } = data;
+  const { ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, discount, items, customer_id } = data;
 
   await db.execute(
     `UPDATE invoices
-     SET ship_to = $1, bill_no = $2, date = $3, terms_of_payment = $4, state = $5, total_quantity = $6, sub_total = $7, cgst = $8, sgst = $9, igst = $10, grand_total = $11, customer_id = $12
-     WHERE invoice_id = $13`,
-    [ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, customer_id, id]
+     SET ship_to = $1, bill_no = $2, date = $3, terms_of_payment = $4, state = $5, total_quantity = $6, sub_total = $7, cgst = $8, sgst = $9, igst = $10, grand_total = $11, discount = $12, customer_id = $13
+     WHERE invoice_id = $14`,
+    [
+      ship_to || "",
+      String(bill_no || ""),
+      date || null,
+      terms_of_payment || "30 Days",
+      state || "State",
+      Number(total_quantity) || 0,
+      Number(sub_total) || 0,
+      Number(cgst) || 0,
+      Number(sgst) || 0,
+      Number(igst) || 0,
+      Number(grand_total) || 0,
+      Number(discount) || 0,
+      customer_id || null,
+      id,
+    ]
   );
 
   await db.execute(`DELETE FROM items WHERE invoice_id = $1`, [id]);
@@ -217,8 +246,21 @@ export const checkInvoice = async (billNo) => {
   return { exists: invoices.length > 0 };
 };
 
+export const getNextBillNo = async () => {
+  const db = await getDB();
+  // Cast to integer to get the max numeric bill number, ignoring non-numeric ones
+  const res = await db.select(
+    `SELECT MAX(CAST(bill_no AS INTEGER)) as max_bill FROM invoices WHERE bill_no GLOB '[0-9]*'`
+  );
+  const maxBill = res[0]?.max_bill;
+  return maxBill ? Number(maxBill) + 1 : 1;
+};
+
 export const deleteInvoice = async (id) => {
   const db = await getDB();
+  // Manual fallback: Delete items first to avoid foreign key constraint errors
+  // even if the table was initialized without ON DELETE CASCADE.
+  await db.execute(`DELETE FROM items WHERE invoice_id = $1`, [id]);
   await db.execute(`DELETE FROM invoices WHERE invoice_id = $1`, [id]);
   return { message: "Invoice deleted successfully!" };
 };

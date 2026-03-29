@@ -32,8 +32,9 @@ export async function initDatabase() {
     invoice_status TEXT,
     ship_to TEXT,
     customer_id INTEGER,
+    discount REAL DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE SET NULL
   )`);
   console.log("Invoice table checked/created");
   
@@ -45,7 +46,15 @@ export async function initDatabase() {
     quantity INTEGER,
     price REAL,
     total REAL,
-    FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id)
+    FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id) ON DELETE CASCADE
     )`);
     console.log("Items table checked/created");
+
+    // Migration: Add discount column if it doesn't exist
+    try {
+      await db.execute(`ALTER TABLE invoices ADD COLUMN discount REAL DEFAULT 0`);
+      console.log("Migration: Added discount column to invoices table");
+    } catch (e) {
+      // Column probably already exists
+    }
 }

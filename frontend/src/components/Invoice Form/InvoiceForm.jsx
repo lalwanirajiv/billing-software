@@ -13,7 +13,8 @@ import {
   createInvoice, 
   updateInvoice, 
   getInvoiceById, 
-  getCustomerById 
+  getCustomerById,
+  getNextBillNo
 } from "../../lib/api";
 
 const initialFormData = {
@@ -25,6 +26,7 @@ const initialFormData = {
   date: "",
   terms: "",
   state: "State",
+  discount: 0,
   items: [{ name: "", hsn: "", qty: 0, rate: 0, amount: 0 }],
 };
 
@@ -47,6 +49,7 @@ export default function InvoiceForm() {
   const [customers, setCustomers] = useState([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
   const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -69,7 +72,13 @@ export default function InvoiceForm() {
         // Clear stale data so new invoice form starts blank
         localStorage.removeItem("invoice-data");
         localStorage.removeItem("customer-data");
-        setFormData(initialFormData);
+        // Auto-populate the next bill number
+        try {
+          const nextBillNo = await getNextBillNo();
+          setFormData({ ...initialFormData, billNo: String(nextBillNo) });
+        } catch (e) {
+          setFormData(initialFormData);
+        }
         return;
       }
 
@@ -112,6 +121,7 @@ export default function InvoiceForm() {
               : "",
 
             grand_total: parsedData.grand_total || 0,
+            discount: parsedData.discount || 0,
             items:
               parsedData.items && parsedData.items.length
                 ? parsedData.items.map((item) => ({
@@ -152,8 +162,63 @@ export default function InvoiceForm() {
     setIsSuggestionsVisible(false);
   };
 
+  const validate = () => {
+    const newErrors = {};
+
+    // Customer name
+    if (!formData.shipTo || formData.shipTo.trim() === "") {
+      newErrors.shipTo = "Customer name is required.";
+    }
+
+    // Bill number
+    if (!formData.billNo || String(formData.billNo).trim() === "") {
+      newErrors.billNo = "Bill number is required.";
+    }
+
+    // Date
+    if (!formData.date) {
+      newErrors.date = "Invoice date is required.";
+    }
+
+    // Items validation
+    const validItems = formData.items.filter(
+      (item) => (item.name || item.item_name || "").trim() !== ""
+    );
+    if (validItems.length === 0) {
+      newErrors.items = "At least one item with a name is required.";
+    } else {
+      const itemErrors = [];
+      formData.items.forEach((item, idx) => {
+        const name = (item.name || item.item_name || "").trim();
+        if (name !== "") {
+          if (!item.qty || Number(item.qty) <= 0) {
+            itemErrors.push(`Item ${idx + 1}: Quantity must be greater than 0.`);
+          }
+          if (!item.rate || Number(item.rate) <= 0) {
+            itemErrors.push(`Item ${idx + 1}: Rate must be greater than 0.`);
+          }
+        }
+      });
+      if (itemErrors.length > 0) {
+        newErrors.items = itemErrors.join(" ");
+      }
+    }
+
+    // Discount cannot be negative
+    if (Number(formData.discount) < 0) {
+      newErrors.discount = "Discount cannot be negative.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSaveClick = (e) => {
     e.preventDefault();
+    if (!validate()) {
+      showToast("Please fix the form errors before saving.", "error");
+      return;
+    }
     setShowConfirmSave(true);
   };
 
@@ -217,7 +282,8 @@ export default function InvoiceForm() {
       sgst = sub_total * 0.025;
     }
 
-    const totalAmount = sub_total + cgst + sgst + igst;
+    const discount = Number(formData.discount) || 0;
+    const totalAmount = sub_total + cgst + sgst + igst - discount;
     const grand_total = Math.round(totalAmount);
     const adjustment = grand_total - totalAmount;
 
@@ -231,7 +297,7 @@ export default function InvoiceForm() {
       adjustment,
       grand_total,
     });
-  }, [formData.items, formData.state]);
+  }, [formData.items, formData.state, formData.discount]);
 
   // --- Save Logic ---
   const saveInvoice = async () => {
@@ -263,23 +329,27 @@ export default function InvoiceForm() {
       const payload = {
         customer_id: customerId,
         ship_to: formData.shipTo,
-        bill_no: Number(formData.billNo),
+        // Store bill number cleanly: if purely numeric use integer string, else keep as-is
+        bill_no: /^\d+$/.test(String(formData.billNo).trim())
+          ? String(parseInt(formData.billNo, 10))
+          : String(formData.billNo).trim(),
         date: formData.date,
         terms_of_payment:
           formData.terms?.trim() !== "" ? formData.terms : "30 Days",
         state: formData.state,
-        total_quantity: totals.totalQty,
-        sub_total: totals.sub_total,
-        cgst: totals.cgst,
-        sgst: totals.sgst,
-        igst: totals.igst,
-        grand_total: totals.grand_total,
+        total_quantity: Number(totals.totalQty) || 0,
+        sub_total: Number(totals.sub_total) || 0,
+        cgst: Number(totals.cgst) || 0,
+        sgst: Number(totals.sgst) || 0,
+        igst: Number(totals.igst) || 0,
+        grand_total: Number(totals.grand_total) || 0,
+        discount: Number(formData.discount) || 0,
         items: (formData.items || []).map((item) => ({
           item_name: item.name || item.item_name,
           hsn: item.hsn,
-          quantity: item.qty || item.quantity,
-          price: item.rate || item.price,
-          total: item.amount || item.total,
+          quantity: Number(item.qty || item.quantity) || 0,
+          price: Number(item.rate || item.price) || 0,
+          total: Number(item.amount || item.total) || 0,
         })),
       };
 
@@ -333,6 +403,7 @@ export default function InvoiceForm() {
               isSuggestionsVisible={isSuggestionsVisible}
               setIsSuggestionsVisible={setIsSuggestionsVisible}
               isLoadingCustomers={isLoadingCustomers}
+              errors={errors}
               filteredCustomers={
                 formData.shipTo
                   ? customers.filter((c) =>
@@ -350,6 +421,11 @@ export default function InvoiceForm() {
               addItem={addItem}
               removeItem={removeItem}
             />
+            {errors.items && (
+              <p className="text-red-500 dark:text-red-400 text-sm font-medium flex items-center gap-1">
+                <span>⚠</span> {errors.items}
+              </p>
+            )}
 
             <div className="flex justify-end pt-4">
               <button

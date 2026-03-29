@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { SearchIcon } from "../../Reusables/Icons";
-import { Calendar, FileDown } from "lucide-react";
+import { Calendar, FileDown, FileText } from "lucide-react";
 
 export const InvoiceListHeader = ({ 
   dateFilter, 
@@ -89,15 +89,17 @@ export const InvoiceListHeader = ({
         <div className="flex gap-2">
           <button
             onClick={onExportClick}
-            className="px-4 py-2 border-2 border-slate-200 dark:border-gray-600 text-slate-700 dark:text-gray-200 rounded-lg text-center hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center justify-center gap-2 font-semibold transition-all"
+            className="btn-cta-secondary"
           >
-            <FileDown size={18} /> Export
+            <FileDown size={20} />
+            <span>Export</span>
           </button>
           <Link
             to="/invoice-form"
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-center hover:bg-indigo-700 flex items-center justify-center font-bold shadow-lg shadow-indigo-100 dark:shadow-none"
+            className="btn-cta-primary whitespace-nowrap"
           >
-            Add New Invoice
+            <FileText size={20} />
+            <span>Add New Invoice</span>
           </Link>
         </div>
       </div>

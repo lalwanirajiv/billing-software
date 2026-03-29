@@ -4,7 +4,7 @@ const InvoiceMeta = ({ data }) => (
   <div className="border border-gray-300 dark:border-gray-600 p-3 rounded-md text-sm mb-4">
     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
       <div>
-        <span className="font-semibold">BILL NO:</span> {data.bill_no}
+        <span className="font-semibold">BILL NO:</span> {/^\d+(\.0+)?$/.test(String(data.bill_no)) ? parseInt(data.bill_no) : data.bill_no}
       </div>
       <div>
         <span className="font-semibold">DATE:</span> {data.date}
