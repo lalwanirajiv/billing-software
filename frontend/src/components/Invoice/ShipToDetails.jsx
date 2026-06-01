@@ -30,11 +30,7 @@ const ShipToDetails = ({ data }) => {
             customer?.address_line1 ||
             "Address Line 1 not available"}
         </p>
-        <p>
-          {data.address_line2 ||
-            customer?.address_line2 ||
-            "Address Line 2 not available"}
-        </p>
+        <p>{data.address_line2 || customer?.address_line2 || "-"}</p>
       </div>
       <div className="pt-2 mt-auto">
         <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">

@@ -1,274 +1,379 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { getCustomerById, getInvoicesByCustomerId } from "../../lib/api";
-import { ChevronLeft, User, Phone, MapPin, FileText, IndianRupee, Clock, CheckCircle, AlertCircle } from "lucide-react";
-import { useToast } from "../../context/ToastContext";
-import { BackButton } from "../Reusables/BackButton";
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { getCustomerById, getInvoicesByCustomerId } from '../../lib/api';
+import { useFinancialYear } from '../../context/FinancialYearContext';
+import FinancialYearSelector from '../Reusables/FinancialYearSelector';
+import {
+  User,
+  Phone,
+  MapPin,
+  FileText,
+  Pencil,
+  Plus,
+  Search,
+  ExternalLink,
+  Calendar,
+  BadgeIndianRupee,
+} from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
+import { BackButton } from '../Reusables/BackButton';
+import CustomerAccountSkeleton from './CustomerAccountSkeleton';
+import CustomerAccountStats from './CustomerAccountStats';
+import PageHeader from '../Reusables/PageHeader';
+import { usePageTitle } from '../../context/PageTitleContext';
+import {
+  computeCustomerAccountStats,
+  filterCustomerInvoices,
+  formatINR,
+  formatInvoiceDate,
+  getCustomerInitials,
+  STATUS_STYLES,
+} from './customerAccountUtils';
+import { STATUS_OPTIONS } from '../List of Invoices/invoiceListUtils';
+
+function StatusBadge({ status }) {
+  const key = status || 'Due';
+  return (
+    <span
+      className={`inline-flex px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded-full ring-1 ring-inset ${
+        STATUS_STYLES[key] || STATUS_STYLES.Due
+      }`}
+    >
+      {key}
+    </span>
+  );
+}
+
+function DetailRow({ icon: Icon, label, value, mono = false }) {
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-b border-slate-100 last:border-0">
+      <div className="p-1.5 rounded-lg bg-slate-50 text-slate-400 shrink-0 mt-0.5">
+        <Icon size={16} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-slate-500">{label}</p>
+        <p
+          className={`text-sm text-slate-900 mt-0.5 break-words ${
+            mono ? 'font-mono' : ''
+          }`}
+        >
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function CustomerAccount() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  
+  const { startDate, endDate, label: fyLabel } = useFinancialYear();
+  const { title, eyebrow, setPageTitle } = usePageTitle();
+
   const [customer, setCustomer] = useState(null);
   const [invoices, setInvoices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalBilled: 0,
-    totalPaid: 0,
-    totalDue: 0,
-    invoiceCount: 0
-  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
 
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const customerData = await getCustomerById(id);
-      const invoicesData = await getInvoicesByCustomerId(id);
-      
+      const [customerData, invoicesData] = await Promise.all([
+        getCustomerById(id),
+        getInvoicesByCustomerId(id, startDate, endDate),
+      ]);
       setCustomer(customerData);
       setInvoices(invoicesData);
-      
-      // Calculate stats
-      const totalBilled = invoicesData.reduce((acc, inv) => acc + Number(inv.grand_total || 0), 0);
-      const totalPaid = invoicesData
-        .filter(inv => inv.invoice_status?.toLowerCase() === "paid")
-        .reduce((acc, inv) => acc + Number(inv.grand_total || 0), 0);
-      const totalDue = totalBilled - totalPaid;
-      
-      setStats({
-        totalBilled,
-        totalPaid,
-        totalDue,
-        invoiceCount: invoicesData.length
-      });
     } catch (err) {
-      console.error("Error fetching customer data:", err);
-      showToast("Failed to load customer details", "error");
+      console.error('Error fetching customer data:', err);
+      showToast('Failed to load customer details', 'error');
+      setCustomer(null);
+      setInvoices([]);
     } finally {
       setIsLoading(false);
     }
-  }, [id, showToast]);
+  }, [id, showToast, startDate, endDate]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric"
+  useEffect(() => {
+    if (customer?.name?.trim()) {
+      setPageTitle(`${customer.name.trim()} · Customer account`);
+    }
+  }, [customer?.name, setPageTitle]);
+
+  const stats = useMemo(
+    () => computeCustomerAccountStats(invoices),
+    [invoices]
+  );
+
+  const filteredInvoices = useMemo(
+    () =>
+      filterCustomerInvoices(invoices, {
+        search: searchTerm,
+        status: statusFilter,
+      }),
+    [invoices, searchTerm, statusFilter]
+  );
+
+  const formatMemberSince = (dateString) => {
+    if (!dateString) return '—';
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
     });
   };
 
-  const getStatusStyle = (status) => {
-    switch (status?.toLowerCase()) {
-      case "paid":
-        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800";
-      case "overdue":
-        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800";
-      case "due":
-        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 border-gray-200 dark:border-gray-700";
-    }
-  };
+  const addressText =
+    [customer?.address_line1, customer?.address_line2].filter(Boolean).join(', ') ||
+    '—';
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          <BackButton className="!mb-4" />
+          <CustomerAccountSkeleton />
+        </div>
       </div>
     );
   }
 
   if (!customer) {
     return (
-      <div className="p-8 text-center bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Customer not found</h2>
-        <button onClick={() => navigate("/customers")} className="mt-4 text-blue-600 hover:underline">
-          Back to Customer List
+      <div className="min-h-screen bg-slate-50 p-8 flex flex-col items-center justify-center text-center">
+        <User className="w-12 h-12 text-slate-300 mb-4" />
+        <h2 className="text-xl font-semibold text-slate-900">Customer not found</h2>
+        <p className="text-slate-500 text-sm mt-2 max-w-sm">
+          This customer may have been removed or the link is invalid.
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate('/customers')}
+          className="btn-cta-primary mt-6 !text-sm"
+        >
+          Back to customers
         </button>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Navigation & Header */}
-        <div className="mb-4">
-          <BackButton />
-        </div>
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex gap-3">
-             <Link
-              to={`/edit-customer/${customer.customer_id}`}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800 transition-all font-medium flex items-center gap-2"
-            >
-              Edit Details
-            </Link>
-          </div>
+    <div className="min-h-screen bg-slate-50">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <BackButton className="!mb-2" />
+
+        <div className="mb-4 lg:hidden">
+          <FinancialYearSelector />
         </div>
 
-        {/* Customer Profile Card */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-          <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                  <User size={32} />
+        <PageHeader
+          eyebrow={`${fyLabel} · ${eyebrow}`}
+          title={title}
+          description={
+            <>
+              {stats.invoiceCount} invoice{stats.invoiceCount !== 1 ? 's' : ''} in this
+              financial year
+              {stats.totalDue > 0 && (
+                <span className="text-amber-700 font-medium">
+                  {' '}
+                  · {formatINR(stats.totalDue)} outstanding
+                </span>
+              )}
+            </>
+          }
+          actions={
+            <>
+              <Link
+                to={`/edit-customer/${customer.customer_id}`}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:border-brand-primary hover:text-brand-primary transition-colors"
+              >
+                <Pencil size={18} />
+                Edit customer
+              </Link>
+              <Link to="/invoice-form" className="btn-cta-primary !py-2.5 !px-4 !text-sm">
+                <Plus size={18} />
+                <span>New invoice</span>
+              </Link>
+            </>
+          }
+        />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* Profile card */}
+          <div className="lg:col-span-1 bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div className="p-5 sm:p-6 border-b border-slate-100 bg-gradient-to-br from-slate-50 to-white">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center text-lg font-bold shrink-0">
+                  {getCustomerInitials(customer.name)}
                 </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900 dark:text-white leading-tight uppercase tracking-tight">
+                <div className="min-w-0">
+                  <h2 className="text-lg font-bold text-slate-900 truncate">
                     {customer.name}
-                  </h1>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 uppercase font-semibold">
-                    Customer ID: #{customer.customer_id}
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Customer #{customer.customer_id}
                   </p>
                 </div>
               </div>
-
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <MapPin className="text-gray-400 mt-0.5" size={18} />
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Address</p>
-                    <p className="text-sm text-gray-900 dark:text-gray-200 uppercase">
-                      {[customer.address_line1, customer.address_line2].filter(Boolean).join(", ")}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Phone className="text-gray-400" size={18} />
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</p>
-                    <p className="text-sm text-gray-900 dark:text-gray-200 uppercase">{customer.phone_number || "N/A"}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <FileText className="text-gray-400" size={18} />
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">GSTIN</p>
-                    <p className="text-sm text-gray-900 dark:text-gray-200 uppercase">{customer.gstin || "Not Available"}</p>
-                  </div>
-                </div>
-              </div>
             </div>
-            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
-               <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Acct. Active Since</span>
-               <span className="text-xs font-black text-gray-600 dark:text-gray-300">{formatDate(customer.created_at)}</span>
+
+            <div className="px-5 sm:px-6 py-2">
+              <DetailRow icon={MapPin} label="Address" value={addressText} />
+              <DetailRow
+                icon={Phone}
+                label="Phone"
+                value={customer.phone_number || '—'}
+              />
+              <DetailRow
+                icon={BadgeIndianRupee}
+                label="GSTIN"
+                value={customer.gstin || '—'}
+                mono
+              />
+              <DetailRow
+                icon={Calendar}
+                label="Customer since"
+                value={formatMemberSince(customer.created_at)}
+              />
+            </div>
+
+            <div className="px-5 sm:px-6 py-4 bg-slate-50/80 border-t border-slate-100">
+              <Link
+                to="/customers"
+                className="text-xs font-medium text-slate-500 hover:text-brand-primary transition-colors"
+              >
+                ← All customers
+              </Link>
             </div>
           </div>
 
-          {/* Stats Section */}
-          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 mb-4 transition-transform hover:scale-110">
-                  <IndianRupee size={20} />
-                </div>
-                <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Total Paid amount</p>
-              </div>
-              <h2 className="text-3xl font-black text-gray-900 dark:text-white mt-2">₹{stats.totalPaid.toLocaleString()}</h2>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 mb-4 transition-transform hover:scale-110">
-                  <Clock size={20} />
-                </div>
-                <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Outstanding Due</p>
-              </div>
-              <h2 className="text-3xl font-black text-orange-600 dark:text-orange-400 mt-2">₹{stats.totalDue.toLocaleString()}</h2>
-            </div>
-
-            <div className="bg-blue-600 dark:bg-blue-700 p-6 rounded-2xl shadow-lg border-none flex flex-col justify-between col-span-1 md:col-span-2 relative overflow-hidden group">
-              <div className="relative z-10">
-                <p className="text-blue-100 text-sm font-bold uppercase tracking-widest mb-1 opacity-80">Lifetime Business Value</p>
-                <h2 className="text-4xl font-black text-white leading-none">₹{stats.totalBilled.toLocaleString()}</h2>
-                <div className="mt-4 flex items-center gap-4">
-                   <div className="flex flex-col">
-                      <span className="text-[10px] text-blue-200 uppercase font-black tracking-widest">Transactions</span>
-                      <span className="text-xl text-white font-black">{stats.invoiceCount}</span>
-                   </div>
-                   <div className="w-[1px] h-8 bg-blue-500 group-hover:bg-blue-400 transition-colors shadow-blue-500 shadow-sm"></div>
-                   <div className="flex flex-col">
-                      <span className="text-[10px] text-blue-200 uppercase font-black tracking-widest">Average Value</span>
-                      <span className="text-xl text-white font-black">₹{stats.invoiceCount > 0 ? (stats.totalBilled / stats.invoiceCount).toFixed(0) : 0}</span>
-                   </div>
-                </div>
-              </div>
-              {/* Decorative circle */}
-              <div className="absolute -right-16 -top-16 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
-            </div>
+          {/* FY stats */}
+          <div className="lg:col-span-2">
+            <CustomerAccountStats stats={stats} fyLabel={fyLabel} />
           </div>
         </div>
 
-        {/* Invoices List */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-               <FileText size={20} className="text-blue-500" /> Invoice History
-            </h2>
-            <Link to="/invoice-form" className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline">
-               + Create New
-            </Link>
+        {/* Invoice history */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <div className="px-4 sm:px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                <FileText size={20} className="text-brand-primary" />
+                Invoice history
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Bills for {customer.name} in {fyLabel}
+              </p>
+            </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50/50 dark:bg-gray-800/50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-black uppercase text-gray-400 tracking-widest">Bill No</th>
-                  <th className="px-6 py-4 text-left text-xs font-black uppercase text-gray-400 tracking-widest">Date</th>
-                  <th className="px-6 py-4 text-left text-xs font-black uppercase text-gray-400 tracking-widest">Amount</th>
-                  <th className="px-6 py-4 text-left text-xs font-black uppercase text-gray-400 tracking-widest">Status</th>
-                  <th className="px-6 py-4 text-right text-xs font-black uppercase text-gray-400 tracking-widest">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {invoices.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 italic">
-                      No transactions recorded for this customer yet.
-                    </td>
+
+          <div className="px-4 sm:px-6 py-3 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search
+                size={18}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+              <input
+                type="search"
+                placeholder="Search by bill no. or amount…"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary sm:w-40"
+              aria-label="Filter by status"
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt === 'All' ? 'All statuses' : opt}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {filteredInvoices.length === 0 ? (
+            <div className="py-16 px-6 text-center">
+              <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-slate-900">No invoices to show</h3>
+              <p className="text-slate-500 text-sm mt-2 max-w-sm mx-auto">
+                {invoices.length === 0
+                  ? `No bills recorded for this customer in ${fyLabel}.`
+                  : 'Try adjusting search or status filters.'}
+              </p>
+              {invoices.length === 0 && (
+                <Link to="/invoice-form" className="btn-cta-primary inline-flex mt-6 !text-sm">
+                  <Plus size={18} />
+                  Create invoice
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wide border-b border-slate-100">
+                    <th className="px-4 sm:px-6 py-3">Bill no.</th>
+                    <th className="px-4 sm:px-6 py-3">Date</th>
+                    <th className="px-4 sm:px-6 py-3 text-right">Amount</th>
+                    <th className="px-4 sm:px-6 py-3">Status</th>
+                    <th className="px-4 sm:px-6 py-3 text-right w-28"> </th>
                   </tr>
-                ) : (
-                  invoices.map((inv) => (
-                    <tr key={inv.invoice_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                      <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">
-                        {inv.bill_no}
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredInvoices.map((inv) => (
+                    <tr
+                      key={inv.invoice_id}
+                      onClick={() => navigate(`/invoice/${inv.invoice_id}`)}
+                      className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                    >
+                      <td className="px-4 sm:px-6 py-3.5 font-semibold text-slate-900 group-hover:text-brand-primary transition-colors">
+                        {inv.bill_no ?? '—'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                        {formatDate(inv.date)}
+                      <td className="px-4 sm:px-6 py-3.5 text-slate-600 tabular-nums">
+                        {formatInvoiceDate(inv.date)}
                       </td>
-                      <td className="px-6 py-4 font-black text-gray-900 dark:text-white">
-                        ₹{Number(inv.grand_total).toFixed(2)}
+                      <td className="px-4 sm:px-6 py-3.5 text-right font-semibold text-slate-900 tabular-nums">
+                        {formatINR(Number(inv.grand_total))}
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusStyle(inv.invoice_status)}`}>
-                          {inv.invoice_status === 'Paid' && <CheckCircle size={10} />}
-                          {inv.invoice_status === 'Due' && <Clock size={10} />}
-                          {inv.invoice_status === 'Overdue' && <AlertCircle size={10} />}
-                          {inv.invoice_status || 'Due'}
-                        </span>
+                      <td className="px-4 sm:px-6 py-3.5">
+                        <StatusBadge status={inv.invoice_status} />
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td
+                        className="px-4 sm:px-6 py-3.5 text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Link
                           to={`/invoice/${inv.invoice_id}`}
-                          className="text-blue-600 dark:text-blue-400 font-bold text-xs uppercase hover:underline"
+                          className="inline-flex items-center gap-1 p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-brand-primary hover:border-brand-primary/40 transition-colors text-xs font-medium"
+                          title="View invoice"
                         >
-                          View Details
+                          <ExternalLink size={14} />
+                          View
                         </Link>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {filteredInvoices.length > 0 && (
+            <div className="px-4 sm:px-6 py-3 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
+              Showing {filteredInvoices.length} of {invoices.length} invoice
+              {invoices.length !== 1 ? 's' : ''}
+            </div>
+          )}
         </div>
       </div>
     </div>

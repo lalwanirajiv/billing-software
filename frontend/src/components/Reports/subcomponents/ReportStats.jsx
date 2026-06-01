@@ -1,56 +1,134 @@
-import React from "react";
-import { TrendingUp, IndianRupee, FileText, Users } from "lucide-react";
+import React from 'react';
+import { TrendingUp, IndianRupee, FileText, Users, Receipt } from 'lucide-react';
+import { formatINR } from '../reportsUtils';
+import SupplyMixPanel from './SupplyMixPanel';
 
-const ReportStatCard = ({ title, value, icon, color = "blue" }) => {
-  const Icon = icon;
-  const colorClasses = {
-    blue: "bg-blue-50 text-blue-600",
-    emerald: "bg-emerald-50 text-emerald-600",
-    amber: "bg-amber-50 text-amber-600",
-    purple: "bg-purple-50 text-purple-600",
+const StatTile = ({ title, value, subtitle, icon: Icon, accent = 'indigo' }) => {
+  const accents = {
+    indigo: 'bg-indigo-50 text-indigo-600',
+    emerald: 'bg-emerald-50 text-emerald-600',
+    amber: 'bg-amber-50 text-amber-600',
+    violet: 'bg-violet-50 text-violet-600',
+    slate: 'bg-slate-100 text-slate-600',
   };
-  
+
   return (
-    <div className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-white/20 flex items-center transition-all hover:shadow-md hover:-translate-y-1">
-      <div className={`p-3 rounded-xl ${colorClasses[color] || colorClasses.blue}`}>
-        <Icon className="h-5 w-5" />
+    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex gap-4 items-start">
+      <div className={`p-2.5 rounded-xl shrink-0 ${accents[accent]}`}>
+        <Icon size={20} />
       </div>
-      <div className="ml-4">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{title}</p>
-        <p className="text-xl font-black text-slate-900">{value}</p>
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-slate-500">{title}</p>
+        <p className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5 truncate">{value}</p>
+        {subtitle && <p className="text-xs text-slate-400 mt-1">{subtitle}</p>}
       </div>
     </div>
   );
 };
 
-const ReportStats = ({ taxMetrics, customers, reportType, sales }) => {
-  const activeEntities = customers.length || (reportType === "salesSummary" ? (new Set(sales.map(s => s.customer)).size || 0) : 0);
+const ReportStats = ({ taxMetrics, customers, reportType, sales, loading = false }) => {
+  const uniqueCustomers =
+    customers.length ||
+    (reportType === 'salesSummary' ? new Set(sales.map((s) => s.customer)).size : 0);
+
+  const avgPerCustomer =
+    customers.length > 0
+      ? (taxMetrics.total_amount || 0) / customers.length
+      : uniqueCustomers > 0
+        ? (taxMetrics.total_amount || 0) / uniqueCustomers
+        : 0;
+
+  if (reportType === 'taxReport') {
+    const tm = taxMetrics;
+    return (
+      <div className="mb-6 no-print space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatTile
+            title="Gross turnover"
+            value={formatINR(tm.total_amount)}
+            subtitle="Including tax"
+            icon={TrendingUp}
+            accent="indigo"
+          />
+          <StatTile
+            title="Taxable value"
+            value={formatINR(tm.taxable_value)}
+            subtitle="Net taxable base"
+            icon={Receipt}
+            accent="slate"
+          />
+          <StatTile
+            title="Total GST"
+            value={formatINR(tm.total_tax)}
+            subtitle={`CGST ${formatINR(tm.total_cgst)} · SGST ${formatINR(tm.total_sgst)} · IGST ${formatINR(tm.total_igst)}`}
+            icon={IndianRupee}
+            accent="emerald"
+          />
+        </div>
+        <SupplyMixPanel taxMetrics={tm} loading={loading} />
+      </div>
+    );
+  }
+
+  if (reportType === 'customerReport') {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6 no-print">
+        <StatTile
+          title="Total revenue"
+          value={formatINR(taxMetrics.total_amount)}
+          icon={TrendingUp}
+          accent="indigo"
+        />
+        <StatTile
+          title="Customers"
+          value={customers.length}
+          subtitle="In selected period"
+          icon={Users}
+          accent="violet"
+        />
+        <StatTile
+          title="Avg per customer"
+          value={formatINR(avgPerCustomer)}
+          icon={IndianRupee}
+          accent="emerald"
+        />
+        <StatTile
+          title="Invoice volume"
+          value={(taxMetrics.total_invoices || 0).toLocaleString('en-IN')}
+          subtitle="Bills in period"
+          icon={FileText}
+          accent="amber"
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10 no-print">
-      <ReportStatCard 
-        title="Total Revenue" 
-        value={`₹${(taxMetrics.total_amount || 0).toLocaleString()}`} 
-        icon={TrendingUp} 
-        color="blue" 
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6 no-print">
+      <StatTile
+        title="Total revenue"
+        value={formatINR(taxMetrics.total_amount)}
+        icon={TrendingUp}
+        accent="indigo"
       />
-      <ReportStatCard 
-        title="GST Liability" 
-        value={`₹${(taxMetrics.total_tax || 0).toLocaleString()}`} 
-        icon={IndianRupee} 
-        color="emerald" 
+      <StatTile
+        title="GST collected"
+        value={formatINR(taxMetrics.total_tax)}
+        subtitle={`Taxable ${formatINR(taxMetrics.taxable_value)}`}
+        icon={IndianRupee}
+        accent="emerald"
       />
-      <ReportStatCard 
-        title="Total Bills" 
-        value={(taxMetrics.total_invoices || 0).toString()} 
-        icon={FileText} 
-        color="amber" 
+      <StatTile
+        title="Invoices"
+        value={(taxMetrics.total_invoices || 0).toLocaleString('en-IN')}
+        icon={FileText}
+        accent="amber"
       />
-      <ReportStatCard 
-        title="Active Entities" 
-        value={activeEntities.toString()} 
-        icon={Users} 
-        color="purple" 
+      <StatTile
+        title="Unique customers"
+        value={uniqueCustomers.toLocaleString('en-IN')}
+        icon={Users}
+        accent="violet"
       />
     </div>
   );

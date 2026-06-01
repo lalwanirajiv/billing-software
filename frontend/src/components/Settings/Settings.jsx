@@ -25,6 +25,7 @@ import {
 import { useToast } from "../../context/ToastContext";
 
 import { BackButton } from "../Reusables/BackButton";
+import PageHeader from "../Reusables/PageHeader";
 
 import ConfirmRestoreModal from "../Reusables/ConfirmRestoreModal";
 
@@ -146,7 +147,7 @@ const Settings = () => {
 
       });
 
-      if (selected) setSavePath(selected);
+      if (selected) setSavePath(String(selected));
 
     } catch (err) {
 
@@ -182,7 +183,7 @@ const Settings = () => {
 
     try {
 
-      localStorage.setItem("pdf-save-path", savePath);
+      localStorage.setItem("pdf-save-path", savePath.trim());
 
       await updateCompanySettings({
 
@@ -320,51 +321,26 @@ const Settings = () => {
 
 
 
-        {/* Page header — matches Dashboard / CustomerForm */}
-
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-
-          <div className="flex items-center gap-4">
-
-            <div className="bg-indigo-100 dark:bg-indigo-900/50 p-3 rounded-full text-indigo-600 dark:text-indigo-400">
-
-              <SettingsIcon className="w-7 h-7" />
-
-            </div>
-
-            <div>
-
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
-
-              <p className="text-gray-600 dark:text-gray-400">
-
-                Company profile, tax rates, and app preferences
-
-              </p>
-
-            </div>
-
-          </div>
-
-          <button
-
-            type="button"
-
-            onClick={handleSaveSettings}
-
-            disabled={isSaving || isBackingUp || isRestoring}
-
-            className="btn-cta-primary w-full sm:w-auto disabled:opacity-50 disabled:pointer-events-none"
-
-          >
+        <PageHeader
+          eyebrow="Company & backup"
+          title="Settings"
+          description="Company profile, tax rates, and app preferences"
+          className="mb-8"
+          actions={
+            <button
+              type="button"
+              onClick={handleSaveSettings}
+              disabled={isSaving || isBackingUp || isRestoring}
+              className="btn-cta-primary w-full sm:w-auto disabled:opacity-50 disabled:pointer-events-none"
+            >
 
             <Save size={20} />
 
             <span>{isSaving ? "Saving..." : "Save Changes"}</span>
 
           </button>
-
-        </div>
+          }
+        />
 
 
 
@@ -388,25 +364,35 @@ const Settings = () => {
 
             title="PDF Storage"
 
-            description="Default folder where generated invoice PDFs are saved automatically."
+            description="Folder where invoice PDFs are saved. Type a path or use Browse. Leave empty to pick a location each time."
 
           >
 
+            <label htmlFor="pdf-save-path" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Destination folder
+            </label>
+
             <div className="flex flex-col sm:flex-row gap-3">
 
-              <div className="flex-grow bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 text-sm font-mono text-gray-700 dark:text-gray-300 break-all min-h-[2.75rem] flex items-center">
+              <input
 
-                {savePath || (
+                id="pdf-save-path"
 
-                  <span className="text-gray-400 dark:text-gray-500 font-sans not-italic">
+                type="text"
 
-                    No folder selected
+                value={savePath}
 
-                  </span>
+                onChange={(e) => setSavePath(e.target.value)}
 
-                )}
+                placeholder="e.g. C:\Users\You\Documents\Invoice PDFs"
 
-              </div>
+                autoComplete="off"
+
+                spellCheck={false}
+
+                className="flex-grow w-full min-w-0 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-4 py-3 text-sm font-mono text-gray-800 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500"
+
+              />
 
               <button
 
@@ -425,6 +411,10 @@ const Settings = () => {
               </button>
 
             </div>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Saved when you click Save Changes. PDFs use this folder plus the invoice file name.
+            </p>
 
           </SettingsCard>
 

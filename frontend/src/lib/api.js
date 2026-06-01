@@ -1,5 +1,17 @@
 import { getDB, withTransaction } from "./database";
 import { assertValidCustomerData, normalizeName } from "./validation";
+import {
+  buildExistingCustomerMatchIndex,
+  customerMatchKeys,
+  customerRowAlreadyExists,
+  scoreCustomerRecord,
+} from "./customerDedupUtils";
+import {
+  deriveFyStartYearsFromDates,
+  getCurrentFyStartYear,
+  getFyRangeFromStartYear,
+  getFyStartYearFromDate,
+} from "./financialYear";
 
 // ================= INVOICE HELPERS ================= //
 
@@ -130,6 +142,157 @@ export const createCustomer = async (data) => {
   return { message: "Customer created successfully!", customerId: result.lastInsertId };
 };
 
+/**
+ * Import many customers from parsed CSV rows. Invalid GSTIN/phone are stored as null.
+ * Skips rows whose name already exists (case-insensitive); use dedupeImportNames first for CSV dupes.
+ */
+export const bulkImportCustomers = async (rows) => {
+  if (!rows?.length) {
+    return { imported: 0, skipped: 0, failed: 0, errors: [] };
+  }
+
+  return withTransaction(async (db) => {
+    const existingCustomers = await db.select(
+      `SELECT customer_id, name, gstin, phone_number, address_line1, address_line2
+       FROM customers WHERE is_deleted = 0`
+    );
+    const matchIndex = buildExistingCustomerMatchIndex(existingCustomers);
+
+    let imported = 0;
+    let skipped = 0;
+    const errors = [];
+
+    for (const row of rows) {
+      const name = normalizeName(row.name);
+      if (!name) continue;
+
+      if (customerRowAlreadyExists(row, matchIndex)) {
+        skipped += 1;
+        continue;
+      }
+
+      try {
+        const gstin = row.gstin ? normalizeName(row.gstin).toUpperCase() : null;
+        const phone = normalizeName(row.phone) || null;
+        const address_line1 = normalizeName(row.address_line1) || null;
+        const address_line2 = normalizeName(row.address_line2) || null;
+
+        await db.execute(
+          `INSERT INTO customers (name, address_line1, address_line2, gstin, phone_number, created_at)
+           VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)`,
+          [name, address_line1, address_line2, gstin, phone]
+        );
+        for (const key of customerMatchKeys({ name, gstin })) {
+          matchIndex.add(key);
+        }
+        imported += 1;
+      } catch (err) {
+        errors.push({ name, message: err?.message || String(err) });
+      }
+    }
+
+    return {
+      imported,
+      skipped,
+      failed: errors.length,
+      errors,
+    };
+  });
+};
+
+/**
+ * Remove duplicate customers (same name or same GSTIN). Keeps the best record,
+ * reassigns invoices to it, and soft-deletes the rest.
+ */
+export const removeDuplicateCustomers = async () => {
+  return withTransaction(async (db) => {
+    const customers = await db.select(
+      `SELECT customer_id, name, gstin, phone_number, address_line1, address_line2, created_at
+       FROM customers WHERE is_deleted = 0`
+    );
+
+    if (customers.length < 2) {
+      return { removed: 0, groups: 0 };
+    }
+
+    const parent = new Map();
+    const find = (id) => {
+      const p = parent.get(id);
+      if (p === id) return id;
+      const root = find(p);
+      parent.set(id, root);
+      return root;
+    };
+    const union = (a, b) => {
+      const ra = find(a);
+      const rb = find(b);
+      if (ra !== rb) parent.set(rb, ra);
+    };
+
+    for (const c of customers) {
+      parent.set(c.customer_id, c.customer_id);
+    }
+
+    const keyToId = new Map();
+    for (const c of customers) {
+      for (const key of customerMatchKeys(c)) {
+        if (keyToId.has(key)) {
+          union(c.customer_id, keyToId.get(key));
+        } else {
+          keyToId.set(key, c.customer_id);
+        }
+      }
+    }
+
+    const groups = new Map();
+    for (const c of customers) {
+      const root = find(c.customer_id);
+      if (!groups.has(root)) groups.set(root, []);
+      groups.get(root).push(c);
+    }
+
+    let removed = 0;
+    let mergedGroups = 0;
+
+    for (const group of groups.values()) {
+      if (group.length < 2) continue;
+      mergedGroups += 1;
+
+      const scored = [];
+      for (const c of group) {
+        const invRows = await db.select(
+          `SELECT COUNT(*) AS count FROM invoices WHERE customer_id = $1`,
+          [c.customer_id]
+        );
+        const invoiceCount = Number(invRows[0]?.count) || 0;
+        scored.push({
+          customer: c,
+          invoiceCount,
+          score: scoreCustomerRecord(c, invoiceCount),
+        });
+      }
+
+      scored.sort((a, b) => b.score - a.score);
+      const keeper = scored[0].customer;
+
+      for (let i = 1; i < scored.length; i += 1) {
+        const dup = scored[i].customer;
+        await db.execute(
+          `UPDATE invoices SET customer_id = $1 WHERE customer_id = $2`,
+          [keeper.customer_id, dup.customer_id]
+        );
+        await db.execute(
+          `UPDATE customers SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP WHERE customer_id = $1`,
+          [dup.customer_id]
+        );
+        removed += 1;
+      }
+    }
+
+    return { removed, groups: mergedGroups };
+  });
+};
+
 export const getAllCustomers = async () => {
   const db = await getDB();
   return await db.select(
@@ -211,18 +374,30 @@ export const deleteCustomersBulk = async (ids) => {
   return { message: `${ids.length} customers deleted successfully!` };
 };
 
-export const getTopCustomers = async (limit = 5) => {
+export const getTopCustomers = async (limit = 5, startDate, endDate) => {
   const db = await getDB();
+  const start = startDate || "1900-01-01";
+  const end = endDate || "2999-12-31";
   const res = await db.select(
     `SELECT c.customer_id, c.name AS customer_name, SUM(i.grand_total) AS total_revenue
      FROM customers c
      JOIN invoices i ON c.customer_id = i.customer_id
+     WHERE i.date BETWEEN $1 AND $2
      GROUP BY c.customer_id, c.name
      ORDER BY total_revenue DESC
-     LIMIT $1`,
-    [limit]
+     LIMIT $3`,
+    [start, end, limit]
   );
   return { data: res };
+};
+
+export const getAvailableFinancialYears = async () => {
+  const db = await getDB();
+  const rows = await db.select(
+    `SELECT DISTINCT date FROM invoices WHERE date IS NOT NULL ORDER BY date ASC`
+  );
+  const dates = rows.map((r) => r.date);
+  return { data: deriveFyStartYearsFromDates(dates) };
 };
 
 // ================= INVOICES ================= //
@@ -317,25 +492,48 @@ export const updateStatus = async (id, status) => {
   return { invoice_id: id, invoice_status: status };
 };
 
-export const getInvoicesByCustomerId = async (customerId) => {
+export const getInvoicesByCustomerId = async (customerId, startDate, endDate) => {
   await refreshInvoiceStatuses();
   const db = await getDB();
+  if (startDate && endDate) {
+    return await db.select(
+      `SELECT * FROM invoices
+       WHERE customer_id = $1 AND date BETWEEN $2 AND $3
+       ORDER BY date DESC, bill_no DESC`,
+      [customerId, startDate, endDate]
+    );
+  }
   return await db.select(
     `SELECT * FROM invoices WHERE customer_id = $1 ORDER BY date DESC, bill_no DESC`,
     [customerId]
   );
 };
 
-export const getRecentInvoices = async (limit = 5) => {
+export const getInvoicesByDateRange = async (startDate, endDate) => {
   await refreshInvoiceStatuses();
   const db = await getDB();
+  const start = startDate || "1900-01-01";
+  const end = endDate || "2999-12-31";
+  return await db.select(
+    `SELECT * FROM invoices
+     WHERE (date BETWEEN $1 AND $2) OR (date IS NULL AND $1 = '1900-01-01')
+     ORDER BY bill_no DESC`,
+    [start, end]
+  );
+};
+
+export const getRecentInvoices = async (limit = 5, startDate, endDate) => {
+  await refreshInvoiceStatuses();
+  const db = await getDB();
+  const start = startDate || "1900-01-01";
+  const end = endDate || "2999-12-31";
   const invoices = await db.select(
     `SELECT i.invoice_id, i.bill_no, i.date, i.grand_total, i.invoice_status, c.name AS customer_name
      FROM invoices i
      LEFT JOIN customers c ON i.customer_id = c.customer_id
-     WHERE i.invoice_status IS NOT NULL
-     ORDER BY i.created_at DESC LIMIT $1`,
-    [limit]
+     WHERE i.invoice_status IS NOT NULL AND i.date BETWEEN $1 AND $2
+     ORDER BY i.created_at DESC LIMIT $3`,
+    [start, end, limit]
   );
   return { data: invoices };
 };
@@ -395,20 +593,27 @@ export const checkInvoice = async (billNo, date = new Date(), excludeInvoiceId =
   return { exists: rows.length > 0 };
 };
 
-export const getNextBillNo = async () => {
+export const getNextBillNo = async (date = new Date()) => {
   const db = await getDB();
-  const res = await db.select(
-    `SELECT bill_no FROM invoices`
-  );
-  
+  const fyStartYear = getFyStartYearFromDate(date);
+  const fyPrefix = `${fyStartYear}-${fyStartYear + 1}_`;
+  const res = await db.select(`SELECT bill_no FROM invoices`);
+
   let maxNum = 0;
-  res.forEach(row => {
+  res.forEach((row) => {
     const billNo = row.bill_no;
-    if (billNo && billNo.includes('_')) {
-      const parts = billNo.split('_');
-      const num = parseInt(parts[1], 10);
+    if (!billNo) return;
+    if (billNo.startsWith(fyPrefix)) {
+      const num = parseInt(billNo.slice(fyPrefix.length), 10);
       if (!isNaN(num) && num > maxNum) maxNum = num;
-    } else if (/^\d+$/.test(billNo)) {
+    } else if (billNo.includes("_")) {
+      const parts = billNo.split("_");
+      const prefix = parts[0];
+      if (prefix === `${fyStartYear}-${fyStartYear + 1}`) {
+        const num = parseInt(parts[1], 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+    } else if (/^\d+$/.test(billNo) && fyStartYear === getCurrentFyStartYear()) {
       const num = parseInt(billNo, 10);
       if (num > maxNum) maxNum = num;
     }
@@ -437,49 +642,68 @@ export const deleteInvoicesBulk = async (ids) => {
 
 // ================= STATS ================= //
 
-export const getDashboardStats = async () => {
+export const getDashboardStats = async (startDate, endDate) => {
     await refreshInvoiceStatuses();
     const db = await getDB();
-    
+    const start = startDate || "1900-01-01";
+    const end = endDate || "2999-12-31";
+    const fyFilter = `date BETWEEN '${start}' AND '${end}'`;
+
     const calcChange = (current, previous) => {
         if (!previous || previous === 0) return current ? 100 : 0;
         return (((current - previous) / previous) * 100).toFixed(1);
     };
 
-    const runQuery = async (query) => {
-        const res = await db.select(query);
+    const runQuery = async (query, params = []) => {
+        const res = params.length ? await db.select(query, params) : await db.select(query);
         return res[0] ? Object.values(res[0])[0] : 0;
     };
 
-    const currentMonthCondition = "strftime('%Y-%m', date) = strftime('%Y-%m', 'now')";
-    const lastMonthCondition = "strftime('%Y-%m', date) = strftime('%Y-%m', 'now', '-1 month')";
+    const currentMonthCondition = `strftime('%Y-%m', date) = strftime('%Y-%m', 'now') AND ${fyFilter}`;
+    const lastMonthCondition = `strftime('%Y-%m', date) = strftime('%Y-%m', 'now', '-1 month') AND ${fyFilter}`;
 
-    const totalRevenueCurrentMonth = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE ${currentMonthCondition}`);
-    const prevTotalRevenue = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE ${lastMonthCondition}`);
-    
-    const totalRevenue = await runQuery(`SELECT SUM(grand_total) FROM invoices`);
-    const overdueAmount = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Overdue'`);
-    const dueAmount = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Due'`);
-    const paidAmount = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Paid'`);
-    
-    const invoicesDue = await runQuery(`SELECT COUNT(*) FROM invoices WHERE invoice_status='Due'`);
-    const invoicesPaid = await runQuery(`SELECT COUNT(*) FROM invoices WHERE invoice_status='Paid'`);
-    const invoicesOverdue = await runQuery(`SELECT COUNT(*) FROM invoices WHERE invoice_status='Overdue'`);
-    
-    // Growth of the total base (Total Now vs Total at start of month)
+    const totalRevenueCurrentMonth = await runQuery(
+      `SELECT SUM(grand_total) FROM invoices WHERE ${currentMonthCondition}`
+    );
+    const prevTotalRevenue = await runQuery(
+      `SELECT SUM(grand_total) FROM invoices WHERE ${lastMonthCondition}`
+    );
+
+    const totalRevenue = await runQuery(
+      `SELECT SUM(grand_total) FROM invoices WHERE ${fyFilter}`
+    );
+    const overdueAmount = await runQuery(
+      `SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Overdue' AND ${fyFilter}`
+    );
+    const dueAmount = await runQuery(
+      `SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Due' AND ${fyFilter}`
+    );
+    const paidAmount = await runQuery(
+      `SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Paid' AND ${fyFilter}`
+    );
+
+    const invoicesDue = await runQuery(
+      `SELECT COUNT(*) FROM invoices WHERE invoice_status='Due' AND ${fyFilter}`
+    );
+    const invoicesPaid = await runQuery(
+      `SELECT COUNT(*) FROM invoices WHERE invoice_status='Paid' AND ${fyFilter}`
+    );
+    const invoicesOverdue = await runQuery(
+      `SELECT COUNT(*) FROM invoices WHERE invoice_status='Overdue' AND ${fyFilter}`
+    );
+
+    const activeCustomers = await runQuery(
+      `SELECT COUNT(DISTINCT customer_id) FROM invoices WHERE customer_id IS NOT NULL AND ${fyFilter}`
+    );
     const totalCustomers = await runQuery(`SELECT COUNT(*) FROM customers WHERE is_deleted = 0`);
-    const totalCustomersStartOfMonth = await runQuery(`
-        SELECT COUNT(*) FROM customers 
-        WHERE is_deleted = 0 
-        AND date(created_at) < date('now', 'start of month')
-    `);
 
-    const prevOverdueAmount = await runQuery(`SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Overdue' AND ${lastMonthCondition}`);
+    const prevOverdueAmount = await runQuery(
+      `SELECT SUM(grand_total) FROM invoices WHERE invoice_status='Overdue' AND ${lastMonthCondition}`
+    );
 
     return {
         data: {
             totalRevenueCurrentMonth: totalRevenueCurrentMonth || 0,
-            // Revenue Change: This Month Performance vs Last Month Performance
             totalRevenueChange: Number(calcChange(totalRevenueCurrentMonth || 0, prevTotalRevenue || 0)),
             overdueAmount: overdueAmount || 0,
             dueAmount: dueAmount || 0,
@@ -491,35 +715,33 @@ export const getDashboardStats = async () => {
             invoicesDueChange: null,
             totalRevenue: Number(totalRevenue) || 0,
             totalCustomers: Number(totalCustomers) || 0,
-            // Customer Change: Growth of the total base this month
-            totalCustomersChange: Number(calcChange(totalCustomers || 0, totalCustomersStartOfMonth || 0))
+            activeCustomersInFy: Number(activeCustomers) || 0,
+            totalCustomersChange: Number(calcChange(activeCustomers || 0, 0))
         }
     };
 };
 
-export const getInvoiceStatusCounts = async () => {
+export const getInvoiceStatusCounts = async (startDate, endDate) => {
     const db = await getDB();
+    const start = startDate || "1900-01-01";
+    const end = endDate || "2999-12-31";
     const data = [];
     const statuses = ["Paid", "Overdue", "Due"];
     for (const status of statuses) {
-        const res = await db.select(`SELECT COUNT(*) as value FROM invoices WHERE invoice_status = $1`, [status]);
+        const res = await db.select(
+          `SELECT COUNT(*) as value FROM invoices WHERE invoice_status = $1 AND date BETWEEN $2 AND $3`,
+          [status, start, end]
+        );
         data.push({ name: status, value: Number(res[0]?.value) || 0 });
     }
     return { data };
 };
 
-export const getRevenueTimeline = async () => {
+export const getRevenueTimeline = async (startDate, endDate) => {
     const db = await getDB();
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1; // 1-12
-    const currentYear = now.getFullYear();
-    
-    // Financial Year starts in April (4)
-    const fyStartYear = currentMonth >= 4 ? currentYear : currentYear - 1;
-    const fyEndYear = fyStartYear + 1;
-    
-    const startDate = `${fyStartYear}-04-01`;
-    const endDate = `${fyEndYear}-03-31`;
+    const start = startDate || getFyRangeFromStartYear(getCurrentFyStartYear()).startDate;
+    const end = endDate || getFyRangeFromStartYear(getCurrentFyStartYear()).endDate;
+    const fyStartYear = parseInt(start.slice(0, 4), 10);
 
     const res = await db.select(`
         SELECT strftime('%Y-%m', date) as month, SUM(grand_total) as revenue, COUNT(*) as count
@@ -527,8 +749,8 @@ export const getRevenueTimeline = async () => {
         WHERE date BETWEEN $1 AND $2
         GROUP BY month 
         ORDER BY month ASC
-    `, [startDate, endDate]);
-    
+    `, [start, end]);
+
     const fullYearData = [];
     for (let m = 0; m < 12; m++) {
         const monthDate = new Date(fyStartYear, 3 + m, 1);
@@ -540,7 +762,7 @@ export const getRevenueTimeline = async () => {
             count: existing ? Number(existing.count) : 0
         });
     }
-    
+
     return { data: fullYearData };
 };
 
@@ -595,10 +817,10 @@ export const getTaxReport = async (startDate, endDate) => {
         SUM(cgst + sgst + igst) AS total_tax,
         SUM(grand_total) AS total_amount,
         COUNT(*) as total_invoices,
-        SUM(CASE WHEN igst > 0 THEN 1 ELSE 0 END) as interstate_count,
-        SUM(CASE WHEN igst > 0 THEN 0 ELSE 1 END) as state_count,
-        SUM(CASE WHEN igst > 0 THEN grand_total ELSE 0 END) as interstate_amount,
-        SUM(CASE WHEN igst > 0 THEN 0 ELSE grand_total END) as state_amount
+        SUM(CASE WHEN LOWER(TRIM(COALESCE(state, ''))) = 'interstate' OR igst > 0 THEN 1 ELSE 0 END) as interstate_count,
+        SUM(CASE WHEN LOWER(TRIM(COALESCE(state, ''))) = 'interstate' OR igst > 0 THEN 0 ELSE 1 END) as state_count,
+        SUM(CASE WHEN LOWER(TRIM(COALESCE(state, ''))) = 'interstate' OR igst > 0 THEN grand_total ELSE 0 END) as interstate_amount,
+        SUM(CASE WHEN LOWER(TRIM(COALESCE(state, ''))) = 'interstate' OR igst > 0 THEN 0 ELSE grand_total END) as state_amount
      FROM invoices
      WHERE date BETWEEN $1 AND $2`,
     [start, end]
@@ -642,15 +864,19 @@ export const getRevenueChartData = async (startDate, endDate) => {
   return { data: res };
 };
 
-export const getTopSellingItems = async (limit = 5) => {
+export const getTopSellingItems = async (limit = 5, startDate, endDate) => {
   const db = await getDB();
+  const start = startDate || "1900-01-01";
+  const end = endDate || "2999-12-31";
   const res = await db.select(
-    `SELECT item_name as name, SUM(quantity) as value, SUM(total) as revenue
-     FROM items
-     GROUP BY item_name
+    `SELECT it.item_name as name, SUM(it.quantity) as value, SUM(it.total) as revenue
+     FROM items it
+     INNER JOIN invoices inv ON it.invoice_id = inv.invoice_id
+     WHERE inv.date BETWEEN $1 AND $2
+     GROUP BY it.item_name
      ORDER BY revenue DESC
-     LIMIT $1`,
-    [limit]
+     LIMIT $3`,
+    [start, end, limit]
   );
   return { data: res };
 };
