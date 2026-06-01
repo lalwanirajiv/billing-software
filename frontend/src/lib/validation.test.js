@@ -50,6 +50,18 @@ describe("validatePhone", () => {
   it("rejects too few digits", () => {
     expect(validatePhone("12345")).toMatch(/10–15 digits/);
   });
+
+  it("accepts multiple comma-separated numbers when allowMultiple", () => {
+    expect(
+      validatePhone("079 22174580, 9374159220, 9426029197", { allowMultiple: true })
+    ).toBeNull();
+  });
+
+  it("rejects invalid segment in multiple mode", () => {
+    expect(validatePhone("9876543210, 12345", { allowMultiple: true })).toMatch(
+      /Each phone number/
+    );
+  });
 });
 
 describe("validateEmail", () => {
@@ -107,12 +119,12 @@ describe("validateCompanySettingsData", () => {
     expect(errors.tax).toBeTruthy();
   });
 
-  it("passes for valid company settings", () => {
+  it("passes for valid company settings with multiple phones", () => {
     expect(
       validateCompanySettingsData({
         company_name: "KAMAL READYMADE STORES",
         gstin: "24AAFPL5557N1ZA",
-        phone: "9374159220",
+        phone: "079 22174580, 9374159220, 9426029197",
         email: "suresh@example.com",
         bank_ifsc: "KKBK0002580",
         cgst_rate: 2.5,

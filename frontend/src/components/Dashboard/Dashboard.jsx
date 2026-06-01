@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  DollarSign,
+  IndianRupee,
   Users,
   Wallet,
   FileStack,
@@ -81,7 +81,6 @@ export default function Dashboard() {
         </div>
 
         <DashboardHeader
-          companyName={settings?.company_name}
           fyLabel={fyLabel}
           onRefresh={() => fetchDashboard(true)}
           refreshing={refreshing}
@@ -93,7 +92,7 @@ export default function Dashboard() {
             title="Revenue this month"
             value={formatINR(stats.totalRevenueCurrentMonth)}
             subtitle={`${fyLabel} total ${formatINR(stats.totalRevenue)}`}
-            icon={DollarSign}
+            icon={IndianRupee}
             change={stats.totalRevenueChange}
             changeType={stats.totalRevenueChange >= 0 ? 'positive' : 'negative'}
             variant="primary"

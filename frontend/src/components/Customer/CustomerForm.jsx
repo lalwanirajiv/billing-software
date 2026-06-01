@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import FormHeader from './FormHeader';
+import PageHeader from '../Reusables/PageHeader';
+import { usePageTitle } from '../../context/PageTitleContext';
 import AddressSection from './AddressSection';
 import CustomerInfoSection from './CustomerInfoSection';
 import { createCustomer, getCustomerById, updateCustomer } from '../../lib/api';
@@ -40,6 +41,13 @@ export default function CustomerForm() {
   const [isLoadingCustomer, setIsLoadingCustomer] = useState(isEditMode);
   const [loadError, setLoadError] = useState(null);
   const { showToast } = useToast();
+  const { title, eyebrow, setPageTitle } = usePageTitle();
+
+  useEffect(() => {
+    if (isEditMode && customerData.name?.trim()) {
+      setPageTitle(`Edit customer · ${customerData.name.trim()}`);
+    }
+  }, [isEditMode, customerData.name, setPageTitle]);
 
   useEffect(() => {
     if (!isEditMode) return;
@@ -115,8 +123,7 @@ export default function CustomerForm() {
     }
   };
 
-  const title = isEditMode ? 'Edit customer' : 'Add customer';
-  const subtitle = isEditMode
+  const description = isEditMode
     ? 'Update billing and contact details for this customer.'
     : 'Create a customer profile for faster invoicing and reports.';
 
@@ -126,7 +133,12 @@ export default function CustomerForm() {
         <BackButton className="!mb-2" />
 
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-8">
-          <FormHeader title={title} subtitle={subtitle} isEditMode={isEditMode} />
+          <PageHeader
+            eyebrow={eyebrow}
+            title={title}
+            description={description}
+            className="mb-8 pb-6 border-b border-slate-100"
+          />
 
           {loadError && (
             <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-100">

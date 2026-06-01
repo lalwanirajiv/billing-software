@@ -18,11 +18,36 @@ export function validateGstin(gstin) {
   return null;
 }
 
-export function validatePhone(phone) {
+function countDigits(value) {
+  return String(value).replace(/\D/g, "").length;
+}
+
+function splitPhoneParts(phone) {
+  return normalizeName(phone)
+    .split(/[,;/|]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+/** @param {{ allowMultiple?: boolean }} [options] */
+export function validatePhone(phone, options = {}) {
+  const { allowMultiple = false } = options;
   const value = normalizeName(phone);
   if (!value) return null;
-  const digits = value.replace(/\D/g, "");
-  if (digits.length < 10 || digits.length > 15) {
+
+  if (allowMultiple) {
+    const parts = splitPhoneParts(value);
+    for (const part of parts) {
+      const len = countDigits(part);
+      if (len < 10 || len > 15) {
+        return "Each phone number must contain 10–15 digits (separate multiple numbers with commas).";
+      }
+    }
+    return null;
+  }
+
+  const len = countDigits(value);
+  if (len < 10 || len > 15) {
     return "Phone must contain 10–15 digits.";
   }
   return null;
@@ -73,7 +98,7 @@ export function validateCompanySettingsData(data) {
   const gstinError = validateGstin(data.gstin);
   if (gstinError) errors.gstin = gstinError;
 
-  const phoneError = validatePhone(data.phone);
+  const phoneError = validatePhone(data.phone, { allowMultiple: true });
   if (phoneError) errors.phone = phoneError;
 
   const emailError = validateEmail(data.email);

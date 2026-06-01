@@ -34,7 +34,7 @@ const chartTitles = {
   taxReport: { title: 'Tax composition', subtitle: 'CGST · SGST · IGST split' },
 };
 
-const VisualInsights = ({ reportType, chart, statusBreakdown, taxComparison, loading }) => {
+const VisualInsights = ({ reportType, chart, statusBreakdown, loading }) => {
   const mainMeta = chartTitles[reportType] || chartTitles.salesSummary;
   const statusTotal = statusBreakdown.reduce((s, row) => s + (Number(row.count) || 0), 0);
   const hasMainChart = chart && chart.length > 0;
@@ -195,62 +195,16 @@ const VisualInsights = ({ reportType, chart, statusBreakdown, taxComparison, loa
     </ChartCard>
   );
 
-  const taxComparisonPanel =
-    reportType === 'taxReport' ? (
-      <ChartCard title="Supply type" subtitle="Intra-state vs inter-state" loading={loading} bodyClassName="min-h-[320px]">
-        <div className="relative h-[180px] mb-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={taxComparison}
-                cx="50%"
-                cy="50%"
-                innerRadius={52}
-                outerRadius={78}
-                paddingAngle={5}
-                dataKey="count"
-                nameKey="name"
-                stroke="none"
-              >
-                <Cell fill={palette.blue[500]} />
-                <Cell fill={palette.violet[500]} />
-              </Pie>
-              <Tooltip {...rechartsTooltipProps} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        <ul className="space-y-2">
-          {taxComparison.map((item, index) => (
-            <li
-              key={item.name}
-              className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100"
-            >
-              <div className="flex items-center gap-2.5">
-                <span
-                  className="w-2.5 h-2.5 rounded-full"
-                  style={{ backgroundColor: index === 0 ? palette.blue[500] : palette.violet[500] }}
-                />
-                <div>
-                  <p className="text-xs font-semibold text-slate-700">{item.name}</p>
-                  <p className="text-[11px] text-slate-400">{item.count} bills</p>
-                </div>
-              </div>
-              <p className="text-sm font-bold text-slate-900">{formatINR(item.amount)}</p>
-            </li>
-          ))}
-        </ul>
-      </ChartCard>
-    ) : null;
-
   return (
     <div
       className={`grid grid-cols-1 gap-6 mb-6 no-print ${
-        reportType === 'taxReport' ? 'lg:grid-cols-3' : 'lg:grid-cols-3'
+        reportType === 'taxReport' ? 'lg:grid-cols-2' : 'lg:grid-cols-3'
       }`}
     >
-      <div className={reportType === 'taxReport' ? 'lg:col-span-1 min-h-[380px]' : 'lg:col-span-2 min-h-[380px]'}>{mainChart}</div>
+      <div className={reportType === 'taxReport' ? 'min-h-[380px]' : 'lg:col-span-2 min-h-[380px]'}>
+        {mainChart}
+      </div>
       <div>{statusPanel}</div>
-      {taxComparisonPanel && <div>{taxComparisonPanel}</div>}
     </div>
   );
 };

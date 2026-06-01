@@ -308,13 +308,13 @@ export default function Reports() {
               customers={reportState.customers}
               reportType={reportType}
               sales={reportState.sales}
+              loading={reportState.loading}
             />
 
             <VisualInsights
               reportType={reportType}
               chart={reportState.chart}
               statusBreakdown={reportState.statusBreakdown}
-              taxComparison={reportState.taxComparison}
               loading={reportState.loading}
             />
 

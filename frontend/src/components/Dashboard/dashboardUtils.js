@@ -4,11 +4,16 @@ export function formatINR(value) {
 
 export { getFinancialYearLabel } from '../../lib/financialYear';
 
-export function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
+/**
+ * Time-of-day greeting in the user's local timezone.
+ * @param {Date} [now]
+ */
+export function getGreeting(now = new Date()) {
+  const hour = now.getHours();
+  if (hour >= 5 && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 17) return 'Good afternoon';
+  if (hour >= 17 && hour < 21) return 'Good evening';
+  return 'Good night';
 }
 
 export function formatRelativeDate(dateStr) {

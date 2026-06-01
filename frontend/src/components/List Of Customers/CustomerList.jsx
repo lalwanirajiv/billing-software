@@ -3,7 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { DeleteConfirmationModal } from './DeleteConfirmationModel';
 import { useToast } from '../../context/ToastContext';
 import { EditIcon, TrashIcon } from '../Reusables/Icons';
-import { getAllCustomers, deleteCustomer, deleteCustomersBulk, getInvoicesByDateRange } from '../../lib/api';
+import {
+  getAllCustomers,
+  deleteCustomer,
+  deleteCustomersBulk,
+  getInvoicesByDateRange,
+  removeDuplicateCustomers,
+} from '../../lib/api';
 import { useFinancialYear } from '../../context/FinancialYearContext';
 import FinancialYearSelector from '../Reusables/FinancialYearSelector';
 import { Search, UserPlus, Trash2, AlertTriangle, RefreshCw, MapPin, Phone } from 'lucide-react';
@@ -12,7 +18,13 @@ import CustomerListHeader from './CustomerListHeader';
 import CustomerListSkeleton from './CustomerListSkeleton';
 import CustomerListStats from './CustomerListStats';
 import CustomerPrintView from './CustomerPrintView';
+import CustomerImportConfirmModal from './CustomerImportConfirmModal';
 import { saveCsvFile } from '../../lib/csvExport';
+import {
+  readCustomerCsvFromDialog,
+  previewCustomerCsvImport,
+  runCustomerCsvImport,
+} from '../../lib/customerCsvImportService';
 
 export default function CustomerList() {
   const navigate = useNavigate();
@@ -31,11 +43,23 @@ export default function CustomerList() {
   const [isBulkDelete, setIsBulkDelete] = useState(false);
   const [exportData, setExportData] = useState([]);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importPreview, setImportPreview] = useState(null);
+  const [pendingImportCsv, setPendingImportCsv] = useState(null);
+  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false);
 
   const fetchCustomers = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
+      const dupResult = await removeDuplicateCustomers();
+      if (dupResult.removed > 0) {
+        showToast(
+          `Removed ${dupResult.removed} duplicate customer${dupResult.removed !== 1 ? 's' : ''}.`,
+          'success'
+        );
+      }
+
       const [data, fyInvoices] = await Promise.all([
         getAllCustomers(),
         getInvoicesByDateRange(startDate, endDate),
@@ -52,7 +76,7 @@ export default function CustomerList() {
     } finally {
       setIsLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, showToast]);
 
   useEffect(() => {
     fetchCustomers();
@@ -179,6 +203,57 @@ export default function CustomerList() {
     }, 400);
   };
 
+  const reportImportResult = (result) => {
+    const parts = [
+      `${result.imported} imported`,
+      result.skipped ? `${result.skipped} skipped (already in system)` : null,
+      result.failed ? `${result.failed} failed` : null,
+    ].filter(Boolean);
+    const variant = result.imported > 0 ? 'success' : 'info';
+    showToast(parts.join(' · '), variant);
+    if (result.errors?.length) {
+      console.warn('Customer import errors:', result.errors);
+    }
+  };
+
+  const handleImportCsv = async () => {
+    try {
+      const picked = await readCustomerCsvFromDialog();
+      if (picked.cancelled) {
+        return;
+      }
+      const preview = await previewCustomerCsvImport(picked.text);
+      setPendingImportCsv(picked.text);
+      setImportPreview(preview);
+      setIsImportConfirmOpen(true);
+    } catch (err) {
+      showToast(err.message || 'Could not read CSV.', 'error');
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!pendingImportCsv) return;
+    setIsImporting(true);
+    try {
+      const result = await runCustomerCsvImport(pendingImportCsv);
+      reportImportResult(result);
+      setIsImportConfirmOpen(false);
+      setPendingImportCsv(null);
+      setImportPreview(null);
+      await fetchCustomers();
+    } catch (err) {
+      showToast(err.message || 'Import failed.', 'error');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleCancelImport = () => {
+    setIsImportConfirmOpen(false);
+    setPendingImportCsv(null);
+    setImportPreview(null);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
@@ -221,6 +296,8 @@ export default function CustomerList() {
           fyLabel={fyLabel}
           onExportCsv={handleExportCSV}
           onExportPdf={handleExportPDF}
+          onImportCsv={handleImportCsv}
+          isImporting={isImporting}
           isExportOpen={isExportMenuOpen}
           setExportOpen={setIsExportMenuOpen}
         />
@@ -406,6 +483,14 @@ export default function CustomerList() {
         onConfirm={handleConfirmDelete}
         customerName={isBulkDelete ? `${selectedCustomers.length} selected` : customerToDelete?.name}
         isBulk={isBulkDelete}
+      />
+
+      <CustomerImportConfirmModal
+        isOpen={isImportConfirmOpen}
+        preview={importPreview}
+        onCancel={handleCancelImport}
+        onConfirm={handleConfirmImport}
+        isImporting={isImporting}
       />
 
       <CustomerPrintView customers={exportData} />

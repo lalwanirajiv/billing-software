@@ -9,6 +9,7 @@ import {
 } from '../Reusables/formStyles';
 import FieldError from '../Reusables/FieldError';
 import { formatINR } from '../Dashboard/dashboardUtils';
+import { DISCOUNT_TYPES } from './invoiceDiscountUtils';
 
 const SectionTitle = ({ icon: Icon, children }) => (
   <div className="flex items-center gap-2 pb-1">
@@ -20,6 +21,7 @@ const SectionTitle = ({ icon: Icon, children }) => (
 const TopInfoPanel = ({
   formData,
   handleChange,
+  onDiscountTypeChange,
   totals,
   handleSuggestionClick,
   isSuggestionsVisible,
@@ -227,22 +229,76 @@ const TopInfoPanel = ({
             <span className="tabular-nums">{formatINR(totals.adjustment)}</span>
           </div>
         )}
+        {(totals.discountAmount ?? 0) > 0 && (
+          <div className="flex justify-between text-emerald-700">
+            <span>
+              Discount
+              {formData.discountType === DISCOUNT_TYPES.PERCENT &&
+                Number(formData.discount) > 0 &&
+                ` (${Number(formData.discount)}%)`}
+            </span>
+            <span className="tabular-nums font-medium">
+              − {formatINR(totals.discountAmount)}
+            </span>
+          </div>
+        )}
 
         <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 mt-2">
-          <label htmlFor="discount" className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">
-            Discount (₹)
-          </label>
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <label htmlFor="discount" className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">
+              Discount
+            </label>
+            <div
+              className="inline-flex rounded-lg border border-emerald-200 bg-white p-0.5 text-xs font-semibold"
+              role="group"
+              aria-label="Discount type"
+            >
+              <button
+                type="button"
+                onClick={() => onDiscountTypeChange?.(DISCOUNT_TYPES.AMOUNT)}
+                className={`px-2.5 py-1 rounded-md transition-colors ${
+                  formData.discountType !== DISCOUNT_TYPES.PERCENT
+                    ? 'bg-emerald-600 text-white'
+                    : 'text-emerald-800 hover:bg-emerald-50'
+                }`}
+              >
+                ₹ Amount
+              </button>
+              <button
+                type="button"
+                onClick={() => onDiscountTypeChange?.(DISCOUNT_TYPES.PERCENT)}
+                className={`px-2.5 py-1 rounded-md transition-colors ${
+                  formData.discountType === DISCOUNT_TYPES.PERCENT
+                    ? 'bg-emerald-600 text-white'
+                    : 'text-emerald-800 hover:bg-emerald-50'
+                }`}
+              >
+                % Percent
+              </button>
+            </div>
+          </div>
           <input
             id="discount"
             type="number"
             name="discount"
             min="0"
-            step="0.01"
+            max={formData.discountType === DISCOUNT_TYPES.PERCENT ? 100 : undefined}
+            step={formData.discountType === DISCOUNT_TYPES.PERCENT ? '0.01' : '0.01'}
             value={formData.discount}
             onChange={handleChange}
-            className="mt-1.5 w-full px-3 py-2 rounded-lg border border-emerald-200 bg-white text-right font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+            className="w-full px-3 py-2 rounded-lg border border-emerald-200 bg-white text-right font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
             placeholder="0"
+            aria-label={
+              formData.discountType === DISCOUNT_TYPES.PERCENT
+                ? 'Discount percentage'
+                : 'Discount amount in rupees'
+            }
           />
+          <p className="text-[11px] text-emerald-700/80 mt-1.5">
+            {formData.discountType === DISCOUNT_TYPES.PERCENT
+              ? 'Applied on subtotal before tax.'
+              : 'Fixed amount in rupees.'}
+          </p>
           <FieldError message={errors.discount} />
         </div>
       </div>

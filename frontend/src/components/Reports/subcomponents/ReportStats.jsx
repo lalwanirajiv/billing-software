@@ -1,6 +1,7 @@
 import React from 'react';
-import { TrendingUp, IndianRupee, FileText, Users, MapPin, Receipt } from 'lucide-react';
+import { TrendingUp, IndianRupee, FileText, Users, Receipt } from 'lucide-react';
 import { formatINR } from '../reportsUtils';
+import SupplyMixPanel from './SupplyMixPanel';
 
 const StatTile = ({ title, value, subtitle, icon: Icon, accent = 'indigo' }) => {
   const accents = {
@@ -25,7 +26,7 @@ const StatTile = ({ title, value, subtitle, icon: Icon, accent = 'indigo' }) => 
   );
 };
 
-const ReportStats = ({ taxMetrics, customers, reportType, sales }) => {
+const ReportStats = ({ taxMetrics, customers, reportType, sales, loading = false }) => {
   const uniqueCustomers =
     customers.length ||
     (reportType === 'salesSummary' ? new Set(sales.map((s) => s.customer)).size : 0);
@@ -40,35 +41,31 @@ const ReportStats = ({ taxMetrics, customers, reportType, sales }) => {
   if (reportType === 'taxReport') {
     const tm = taxMetrics;
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6 no-print">
-        <StatTile
-          title="Gross turnover"
-          value={formatINR(tm.total_amount)}
-          subtitle="Including tax"
-          icon={TrendingUp}
-          accent="indigo"
-        />
-        <StatTile
-          title="Taxable value"
-          value={formatINR(tm.taxable_value)}
-          subtitle="Net taxable base"
-          icon={Receipt}
-          accent="slate"
-        />
-        <StatTile
-          title="Total GST"
-          value={formatINR(tm.total_tax)}
-          subtitle={`CGST ${formatINR(tm.total_cgst)} · SGST ${formatINR(tm.total_sgst)} · IGST ${formatINR(tm.total_igst)}`}
-          icon={IndianRupee}
-          accent="emerald"
-        />
-        <StatTile
-          title="Supply mix"
-          value={`${tm.state_count || 0} intra · ${tm.interstate_count || 0} inter`}
-          subtitle="Invoice count by supply type"
-          icon={MapPin}
-          accent="violet"
-        />
+      <div className="mb-6 no-print space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatTile
+            title="Gross turnover"
+            value={formatINR(tm.total_amount)}
+            subtitle="Including tax"
+            icon={TrendingUp}
+            accent="indigo"
+          />
+          <StatTile
+            title="Taxable value"
+            value={formatINR(tm.taxable_value)}
+            subtitle="Net taxable base"
+            icon={Receipt}
+            accent="slate"
+          />
+          <StatTile
+            title="Total GST"
+            value={formatINR(tm.total_tax)}
+            subtitle={`CGST ${formatINR(tm.total_cgst)} · SGST ${formatINR(tm.total_sgst)} · IGST ${formatINR(tm.total_igst)}`}
+            icon={IndianRupee}
+            accent="emerald"
+          />
+        </div>
+        <SupplyMixPanel taxMetrics={tm} loading={loading} />
       </div>
     );
   }

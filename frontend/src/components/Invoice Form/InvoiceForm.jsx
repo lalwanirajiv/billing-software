@@ -4,6 +4,7 @@ import { BackButton } from '../Reusables/BackButton';
 import TopInfoPanel from './TopInfoPanel';
 import ItemsList from './ItemsList';
 import FormHeader from './FormHeader';
+import { usePageTitle } from '../../context/PageTitleContext';
 import InvoiceFormSkeleton from './InvoiceFormSkeleton';
 import ConfirmSaveModal from '../Reusables/ConfirmSaveModal';
 import { useToast } from '../../context/ToastContext';
@@ -22,6 +23,12 @@ import { useCompanySettings } from '../../context/CompanySettingsContext';
 import { normalizeName } from '../../lib/validation';
 import FieldError from '../Reusables/FieldError';
 import { FileText, List } from 'lucide-react';
+import {
+  DISCOUNT_TYPES,
+  resolveDiscountAmount,
+  validateDiscount,
+  convertDiscountValue,
+} from './invoiceDiscountUtils';
 
 const initialFormData = {
   shipTo: '',
@@ -33,6 +40,7 @@ const initialFormData = {
   terms: '',
   state: 'State',
   discount: 0,
+  discountType: DISCOUNT_TYPES.AMOUNT,
   items: [{ name: '', hsn: '', qty: 0, rate: 0, amount: 0 }],
 };
 
@@ -58,6 +66,13 @@ export default function InvoiceForm() {
   const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(isExistingInvoice);
+  const { setPageTitle } = usePageTitle();
+
+  useEffect(() => {
+    if (isExistingInvoice && formData.billNo) {
+      setPageTitle(`Edit invoice #${formData.billNo}`);
+    }
+  }, [isExistingInvoice, formData.billNo, setPageTitle]);
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -126,6 +141,7 @@ export default function InvoiceForm() {
             ? new Date(apiInvoice.date).toISOString().split('T')[0]
             : '',
           discount: apiInvoice.discount || 0,
+          discountType: DISCOUNT_TYPES.AMOUNT,
           items:
             apiInvoice.items && apiInvoice.items.length
               ? apiInvoice.items.map((item) => ({
@@ -157,6 +173,29 @@ export default function InvoiceForm() {
       setErrors((prev) => {
         const next = { ...prev };
         delete next[name];
+        return next;
+      });
+    }
+  };
+
+  const handleDiscountTypeChange = (nextType) => {
+    if (nextType === formData.discountType) return;
+    const subtotal = formData.items.reduce((acc, item) => acc + (item.amount || 0), 0);
+    const converted = convertDiscountValue(
+      subtotal,
+      formData.discountType,
+      nextType,
+      formData.discount
+    );
+    setFormData((prev) => ({
+      ...prev,
+      discountType: nextType,
+      discount: converted,
+    }));
+    if (errors.discount) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.discount;
         return next;
       });
     }
@@ -223,8 +262,17 @@ export default function InvoiceForm() {
       }
     }
 
-    if (Number(formData.discount) < 0) {
-      newErrors.discount = 'Discount cannot be negative.';
+    const subtotalForDiscount = formData.items.reduce(
+      (acc, item) => acc + (item.amount || 0),
+      0
+    );
+    const discountError = validateDiscount(
+      formData.discountType,
+      formData.discount,
+      subtotalForDiscount
+    );
+    if (discountError) {
+      newErrors.discount = discountError;
     }
 
     setErrors(newErrors);
@@ -291,8 +339,12 @@ export default function InvoiceForm() {
     const sub_total = formData.items.reduce((acc, item) => acc + (item.amount || 0), 0);
     const totalQty = formData.items.reduce((acc, item) => acc + (item.qty || 0), 0);
     const tax = calculateInvoiceTax(sub_total, formData.state, settings);
-    const discount = Number(formData.discount) || 0;
-    const totalAmount = sub_total + tax.cgst + tax.sgst + tax.igst - discount;
+    const discountAmount = resolveDiscountAmount(
+      sub_total,
+      formData.discountType,
+      formData.discount
+    );
+    const totalAmount = sub_total + tax.cgst + tax.sgst + tax.igst - discountAmount;
     const grand_total = Math.round(totalAmount);
     const adjustment = grand_total - totalAmount;
 
@@ -302,10 +354,11 @@ export default function InvoiceForm() {
       cgst: tax.cgst,
       sgst: tax.sgst,
       igst: tax.igst,
+      discountAmount,
       adjustment,
       grand_total,
     });
-  }, [formData.items, formData.state, formData.discount, settings]);
+  }, [formData.items, formData.state, formData.discount, formData.discountType, settings]);
 
   const saveInvoice = async () => {
     try {
@@ -325,7 +378,11 @@ export default function InvoiceForm() {
         sgst: Number(totals.sgst) || 0,
         igst: Number(totals.igst) || 0,
         grand_total: Number(totals.grand_total) || 0,
-        discount: Number(formData.discount) || 0,
+        discount: resolveDiscountAmount(
+          totals.sub_total,
+          formData.discountType,
+          formData.discount
+        ),
         items: formData.items
           .filter((item) => (item.name || '').trim())
           .map((item) => ({
@@ -393,6 +450,7 @@ export default function InvoiceForm() {
             <TopInfoPanel
               formData={formData}
               handleChange={handleChange}
+              onDiscountTypeChange={handleDiscountTypeChange}
               totals={totals}
               customers={customers}
               handleSuggestionClick={handleSuggestionClick}

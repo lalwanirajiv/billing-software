@@ -1,6 +1,12 @@
 import { getDB, withTransaction } from "./database";
 import { assertValidCustomerData, normalizeName } from "./validation";
 import {
+  buildExistingCustomerMatchIndex,
+  customerMatchKeys,
+  customerRowAlreadyExists,
+  scoreCustomerRecord,
+} from "./customerDedupUtils";
+import {
   deriveFyStartYearsFromDates,
   getCurrentFyStartYear,
   getFyRangeFromStartYear,
@@ -134,6 +140,157 @@ export const createCustomer = async (data) => {
     [name, address_line1 || null, address_line2 || null, gstin, phone]
   );
   return { message: "Customer created successfully!", customerId: result.lastInsertId };
+};
+
+/**
+ * Import many customers from parsed CSV rows. Invalid GSTIN/phone are stored as null.
+ * Skips rows whose name already exists (case-insensitive); use dedupeImportNames first for CSV dupes.
+ */
+export const bulkImportCustomers = async (rows) => {
+  if (!rows?.length) {
+    return { imported: 0, skipped: 0, failed: 0, errors: [] };
+  }
+
+  return withTransaction(async (db) => {
+    const existingCustomers = await db.select(
+      `SELECT customer_id, name, gstin, phone_number, address_line1, address_line2
+       FROM customers WHERE is_deleted = 0`
+    );
+    const matchIndex = buildExistingCustomerMatchIndex(existingCustomers);
+
+    let imported = 0;
+    let skipped = 0;
+    const errors = [];
+
+    for (const row of rows) {
+      const name = normalizeName(row.name);
+      if (!name) continue;
+
+      if (customerRowAlreadyExists(row, matchIndex)) {
+        skipped += 1;
+        continue;
+      }
+
+      try {
+        const gstin = row.gstin ? normalizeName(row.gstin).toUpperCase() : null;
+        const phone = normalizeName(row.phone) || null;
+        const address_line1 = normalizeName(row.address_line1) || null;
+        const address_line2 = normalizeName(row.address_line2) || null;
+
+        await db.execute(
+          `INSERT INTO customers (name, address_line1, address_line2, gstin, phone_number, created_at)
+           VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)`,
+          [name, address_line1, address_line2, gstin, phone]
+        );
+        for (const key of customerMatchKeys({ name, gstin })) {
+          matchIndex.add(key);
+        }
+        imported += 1;
+      } catch (err) {
+        errors.push({ name, message: err?.message || String(err) });
+      }
+    }
+
+    return {
+      imported,
+      skipped,
+      failed: errors.length,
+      errors,
+    };
+  });
+};
+
+/**
+ * Remove duplicate customers (same name or same GSTIN). Keeps the best record,
+ * reassigns invoices to it, and soft-deletes the rest.
+ */
+export const removeDuplicateCustomers = async () => {
+  return withTransaction(async (db) => {
+    const customers = await db.select(
+      `SELECT customer_id, name, gstin, phone_number, address_line1, address_line2, created_at
+       FROM customers WHERE is_deleted = 0`
+    );
+
+    if (customers.length < 2) {
+      return { removed: 0, groups: 0 };
+    }
+
+    const parent = new Map();
+    const find = (id) => {
+      const p = parent.get(id);
+      if (p === id) return id;
+      const root = find(p);
+      parent.set(id, root);
+      return root;
+    };
+    const union = (a, b) => {
+      const ra = find(a);
+      const rb = find(b);
+      if (ra !== rb) parent.set(rb, ra);
+    };
+
+    for (const c of customers) {
+      parent.set(c.customer_id, c.customer_id);
+    }
+
+    const keyToId = new Map();
+    for (const c of customers) {
+      for (const key of customerMatchKeys(c)) {
+        if (keyToId.has(key)) {
+          union(c.customer_id, keyToId.get(key));
+        } else {
+          keyToId.set(key, c.customer_id);
+        }
+      }
+    }
+
+    const groups = new Map();
+    for (const c of customers) {
+      const root = find(c.customer_id);
+      if (!groups.has(root)) groups.set(root, []);
+      groups.get(root).push(c);
+    }
+
+    let removed = 0;
+    let mergedGroups = 0;
+
+    for (const group of groups.values()) {
+      if (group.length < 2) continue;
+      mergedGroups += 1;
+
+      const scored = [];
+      for (const c of group) {
+        const invRows = await db.select(
+          `SELECT COUNT(*) AS count FROM invoices WHERE customer_id = $1`,
+          [c.customer_id]
+        );
+        const invoiceCount = Number(invRows[0]?.count) || 0;
+        scored.push({
+          customer: c,
+          invoiceCount,
+          score: scoreCustomerRecord(c, invoiceCount),
+        });
+      }
+
+      scored.sort((a, b) => b.score - a.score);
+      const keeper = scored[0].customer;
+
+      for (let i = 1; i < scored.length; i += 1) {
+        const dup = scored[i].customer;
+        await db.execute(
+          `UPDATE invoices SET customer_id = $1 WHERE customer_id = $2`,
+          [keeper.customer_id, dup.customer_id]
+        );
+        await db.execute(
+          `UPDATE customers SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP WHERE customer_id = $1`,
+          [dup.customer_id]
+        );
+        removed += 1;
+      }
+    }
+
+    return { removed, groups: mergedGroups };
+  });
 };
 
 export const getAllCustomers = async () => {
@@ -660,10 +817,10 @@ export const getTaxReport = async (startDate, endDate) => {
         SUM(cgst + sgst + igst) AS total_tax,
         SUM(grand_total) AS total_amount,
         COUNT(*) as total_invoices,
-        SUM(CASE WHEN igst > 0 THEN 1 ELSE 0 END) as interstate_count,
-        SUM(CASE WHEN igst > 0 THEN 0 ELSE 1 END) as state_count,
-        SUM(CASE WHEN igst > 0 THEN grand_total ELSE 0 END) as interstate_amount,
-        SUM(CASE WHEN igst > 0 THEN 0 ELSE grand_total END) as state_amount
+        SUM(CASE WHEN LOWER(TRIM(COALESCE(state, ''))) = 'interstate' OR igst > 0 THEN 1 ELSE 0 END) as interstate_count,
+        SUM(CASE WHEN LOWER(TRIM(COALESCE(state, ''))) = 'interstate' OR igst > 0 THEN 0 ELSE 1 END) as state_count,
+        SUM(CASE WHEN LOWER(TRIM(COALESCE(state, ''))) = 'interstate' OR igst > 0 THEN grand_total ELSE 0 END) as interstate_amount,
+        SUM(CASE WHEN LOWER(TRIM(COALESCE(state, ''))) = 'interstate' OR igst > 0 THEN 0 ELSE grand_total END) as state_amount
      FROM invoices
      WHERE date BETWEEN $1 AND $2`,
     [start, end]
