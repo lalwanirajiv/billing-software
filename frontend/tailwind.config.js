@@ -1,12 +1,16 @@
+import { tailwindColors } from './src/theme/colors.js';
+
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
-    "./index.html",   // if using Vite
-    "./src/**/*.{js,ts,jsx,tsx}", // all React files
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx}',
   ],
-  darkMode: 'class', 
+  darkMode: 'class',
   theme: {
-    extend: {},
+    extend: {
+      colors: tailwindColors,
+    },
   },
   plugins: [],
-}
+};

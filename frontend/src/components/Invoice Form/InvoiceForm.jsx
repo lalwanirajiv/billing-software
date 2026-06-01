@@ -1,36 +1,39 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { BackButton } from "../Reusables/BackButton";
-import TopInfoPanel from "./TopInfoPanel";
-import ItemsList from "./ItemsList";
-import FormHeader from "./FormHeader";
-import ConfirmSaveModal from "../Reusables/ConfirmSaveModal";
-import { useToast } from "../../context/ToastContext";
-import { 
-  getAllCustomers, 
-  getCustomerByExactName, 
-  createInvoice, 
-  updateInvoice, 
-  getInvoiceById, 
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { BackButton } from '../Reusables/BackButton';
+import TopInfoPanel from './TopInfoPanel';
+import ItemsList from './ItemsList';
+import FormHeader from './FormHeader';
+import InvoiceFormSkeleton from './InvoiceFormSkeleton';
+import ConfirmSaveModal from '../Reusables/ConfirmSaveModal';
+import { useToast } from '../../context/ToastContext';
+import {
+  getAllCustomers,
+  getCustomerByExactName,
+  createInvoice,
+  updateInvoice,
+  getInvoiceById,
   getCustomerById,
   getNextBillNo,
-  buildFinalBillNo
-} from "../../lib/api";
-import { calculateInvoiceTax } from "../../lib/companySettings";
-import { useCompanySettings } from "../../context/CompanySettingsContext";
-import { normalizeName } from "../../lib/validation";
+  buildFinalBillNo,
+} from '../../lib/api';
+import { calculateInvoiceTax } from '../../lib/companySettings';
+import { useCompanySettings } from '../../context/CompanySettingsContext';
+import { normalizeName } from '../../lib/validation';
+import FieldError from '../Reusables/FieldError';
+import { FileText, List } from 'lucide-react';
 
 const initialFormData = {
-  shipTo: "",
-  gstin: "",
-  address_line1: "",
-  address_line2: "",
-  billNo: "",
-  date: "",
-  terms: "",
-  state: "State",
+  shipTo: '',
+  gstin: '',
+  address_line1: '',
+  address_line2: '',
+  billNo: '',
+  date: '',
+  terms: '',
+  state: 'State',
   discount: 0,
-  items: [{ name: "", hsn: "", qty: 0, rate: 0, amount: 0 }],
+  items: [{ name: '', hsn: '', qty: 0, rate: 0, amount: 0 }],
 };
 
 export default function InvoiceForm() {
@@ -62,7 +65,7 @@ export default function InvoiceForm() {
         const data = await getAllCustomers();
         setCustomers(data);
       } catch {
-        showToast("Failed to fetch customers", "error");
+        showToast('Failed to fetch customers', 'error');
       } finally {
         setIsLoadingCustomers(false);
       }
@@ -80,13 +83,13 @@ export default function InvoiceForm() {
           setFormData({
             ...initialFormData,
             billNo: String(nextBillNo),
-            date: now.toISOString().split("T")[0],
-            state: settings.default_state_label || "State",
+            date: now.toISOString().split('T')[0],
+            state: settings.default_state_label || 'State',
           });
         } catch {
           setFormData({
             ...initialFormData,
-            state: settings.default_state_label || "State",
+            state: settings.default_state_label || 'State',
           });
         }
         return;
@@ -101,7 +104,7 @@ export default function InvoiceForm() {
           try {
             parsedCustomer = await getCustomerById(apiInvoice.customer_id);
           } catch (custErr) {
-            console.warn("Could not fetch customer details:", custErr);
+            console.warn('Could not fetch customer details:', custErr);
           }
         }
 
@@ -109,36 +112,35 @@ export default function InvoiceForm() {
           ...initialFormData,
           ...apiInvoice,
           invoice_id: apiInvoice.invoice_id || invoiceIdParam,
-          shipTo: apiInvoice.ship_to || parsedCustomer?.name || "",
-          gstin: parsedCustomer?.gstin || "",
+          shipTo: apiInvoice.ship_to || parsedCustomer?.name || '',
+          gstin: parsedCustomer?.gstin || '',
           billNo:
-            apiInvoice.bill_no && apiInvoice.bill_no.includes("_")
-              ? apiInvoice.bill_no.split("_")[1]
-              : apiInvoice.bill_no || "",
-          address_line1: parsedCustomer?.address_line1 || "",
-          address_line2: parsedCustomer?.address_line2 || "",
-          terms: apiInvoice.terms_of_payment || "",
-          state: apiInvoice.state || settings.default_state_label || "State",
+            apiInvoice.bill_no && apiInvoice.bill_no.includes('_')
+              ? apiInvoice.bill_no.split('_')[1]
+              : apiInvoice.bill_no || '',
+          address_line1: parsedCustomer?.address_line1 || '',
+          address_line2: parsedCustomer?.address_line2 || '',
+          terms: apiInvoice.terms_of_payment || '',
+          state: apiInvoice.state || settings.default_state_label || 'State',
           date: apiInvoice.date
-            ? new Date(apiInvoice.date).toISOString().split("T")[0]
-            : "",
-          grand_total: apiInvoice.grand_total || 0,
+            ? new Date(apiInvoice.date).toISOString().split('T')[0]
+            : '',
           discount: apiInvoice.discount || 0,
           items:
             apiInvoice.items && apiInvoice.items.length
               ? apiInvoice.items.map((item) => ({
-                  name: item.item_name || "",
-                  hsn: item.hsn || "",
+                  name: item.item_name || '',
+                  hsn: item.hsn || '',
                   qty: Number(item.quantity) || 0,
                   rate: Number(item.price) || 0,
                   amount: Number(item.total) || 0,
                 }))
-              : [{ name: "", hsn: "", qty: 0, rate: 0, amount: 0 }],
+              : [{ name: '', hsn: '', qty: 0, rate: 0, amount: 0 }],
         });
       } catch (error) {
-        console.error("Error loading invoice data:", error);
-        showToast("Failed to load invoice from database.", "error");
-        navigate("/invoices");
+        console.error('Error loading invoice:', error);
+        showToast('Failed to load invoice.', 'error');
+        navigate('/invoices');
       } finally {
         setIsLoadingInvoice(false);
       }
@@ -150,7 +152,14 @@ export default function InvoiceForm() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (name === "shipTo") setIsSuggestionsVisible(true);
+    if (name === 'shipTo') setIsSuggestionsVisible(true);
+    if (errors[name]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   const handleSuggestionClick = (customer) => {
@@ -158,65 +167,64 @@ export default function InvoiceForm() {
       ...prev,
       shipTo: customer.name,
       gstin: customer.gstin,
-      address_line1: customer.address_line1 || "",
-      address_line2: customer.address_line2 || "",
+      address_line1: customer.address_line1 || '',
+      address_line2: customer.address_line2 || '',
     }));
     setIsSuggestionsVisible(false);
+    if (errors.shipTo) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.shipTo;
+        return next;
+      });
+    }
   };
 
   const validate = () => {
     const newErrors = {};
-
     const shipTo = normalizeName(formData.shipTo);
+
     if (!shipTo) {
-      newErrors.shipTo = "Customer name is required.";
+      newErrors.shipTo = 'Customer name is required.';
     } else {
       const matched = customers.some(
         (c) => normalizeName(c.name).toLowerCase() === shipTo.toLowerCase()
       );
       if (!matched) {
-        newErrors.shipTo =
-          "Select an existing customer from the list or create one first.";
+        newErrors.shipTo = 'Select an existing customer or add one first.';
       }
     }
 
-    // Bill number
-    if (!formData.billNo || String(formData.billNo).trim() === "") {
-      newErrors.billNo = "Bill number is required.";
+    if (!formData.billNo || String(formData.billNo).trim() === '') {
+      newErrors.billNo = 'Bill number is required.';
     }
-
-    // Date
     if (!formData.date) {
-      newErrors.date = "Invoice date is required.";
+      newErrors.date = 'Invoice date is required.';
     }
 
-    // Items validation
-    const validItems = formData.items.filter(
-      (item) => (item.name || item.item_name || "").trim() !== ""
-    );
+    const validItems = formData.items.filter((item) => (item.name || '').trim() !== '');
     if (validItems.length === 0) {
-      newErrors.items = "At least one item with a name is required.";
+      newErrors.items = 'Add at least one line item with a name.';
     } else {
       const itemErrors = [];
       formData.items.forEach((item, idx) => {
-        const name = (item.name || item.item_name || "").trim();
-        if (name !== "") {
+        const name = (item.name || '').trim();
+        if (name) {
           if (!item.qty || Number(item.qty) <= 0) {
-            itemErrors.push(`Item ${idx + 1}: Quantity must be greater than 0.`);
+            itemErrors.push(`Line ${idx + 1}: quantity must be greater than 0.`);
           }
           if (!item.rate || Number(item.rate) <= 0) {
-            itemErrors.push(`Item ${idx + 1}: Rate must be greater than 0.`);
+            itemErrors.push(`Line ${idx + 1}: rate must be greater than 0.`);
           }
         }
       });
       if (itemErrors.length > 0) {
-        newErrors.items = itemErrors.join(" ");
+        newErrors.items = itemErrors.join(' ');
       }
     }
 
-    // Discount cannot be negative
     if (Number(formData.discount) < 0) {
-      newErrors.discount = "Discount cannot be negative.";
+      newErrors.discount = 'Discount cannot be negative.';
     }
 
     setErrors(newErrors);
@@ -226,35 +234,31 @@ export default function InvoiceForm() {
   const handleSaveClick = (e) => {
     e.preventDefault();
     if (!validate()) {
-      showToast("Please fix the form errors before saving.", "error");
+      showToast('Please fix the highlighted errors.', 'error');
       return;
     }
     setShowConfirmSave(true);
   };
 
-  const handleConfirmSave = async () => {
-    setShowConfirmSave(false);
-    await saveInvoice();
-  };
-
-  const handleCancelSave = () => {
-    setShowConfirmSave(false);
-  };
-
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
     const newItems = [...formData.items];
-    newItems[index][name] =
-      name === "name" || name === "hsn" ? value : parseFloat(value) || 0;
-    newItems[index].amount =
-      (newItems[index].qty || 0) * (newItems[index].rate || 0);
+    newItems[index][name] = name === 'name' || name === 'hsn' ? value : parseFloat(value) || 0;
+    newItems[index].amount = (newItems[index].qty || 0) * (newItems[index].rate || 0);
     setFormData((prev) => ({ ...prev, items: newItems }));
+    if (errors.items) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.items;
+        return next;
+      });
+    }
   };
 
   const addItem = () => {
     setFormData((prev) => ({
       ...prev,
-      items: [...prev.items, { name: "", hsn: "", qty: 0, rate: 0, amount: 0 }],
+      items: [...prev.items, { name: '', hsn: '', qty: 0, rate: 0, amount: 0 }],
     }));
   };
 
@@ -265,65 +269,55 @@ export default function InvoiceForm() {
     }));
   };
 
-  const handleClear = () => {
-    setFormData({
-      ...initialFormData,
-      state: settings.default_state_label || "State",
-    });
+  const handleClear = async () => {
+    try {
+      const nextBillNo = await getNextBillNo();
+      setFormData({
+        ...initialFormData,
+        billNo: String(nextBillNo),
+        date: new Date().toISOString().split('T')[0],
+        state: settings.default_state_label || 'State',
+      });
+    } catch {
+      setFormData({
+        ...initialFormData,
+        state: settings.default_state_label || 'State',
+      });
+    }
+    setErrors({});
   };
 
-  // --- Auto-calc totals ---
   useEffect(() => {
-    const sub_total = formData.items.reduce(
-      (acc, item) => acc + (item.amount || 0),
-      0
-    );
-    const totalQty = formData.items.reduce(
-      (acc, item) => acc + (item.qty || 0),
-      0
-    );
-
-    let cgst = 0,
-      sgst = 0,
-      igst = 0;
-
+    const sub_total = formData.items.reduce((acc, item) => acc + (item.amount || 0), 0);
+    const totalQty = formData.items.reduce((acc, item) => acc + (item.qty || 0), 0);
     const tax = calculateInvoiceTax(sub_total, formData.state, settings);
-    cgst = tax.cgst;
-    sgst = tax.sgst;
-    igst = tax.igst;
-
     const discount = Number(formData.discount) || 0;
-    const totalAmount = sub_total + cgst + sgst + igst - discount;
+    const totalAmount = sub_total + tax.cgst + tax.sgst + tax.igst - discount;
     const grand_total = Math.round(totalAmount);
     const adjustment = grand_total - totalAmount;
 
     setTotals({
       sub_total,
       totalQty,
-      cgst,
-      sgst,
-      igst,
-      totalAmount,
+      cgst: tax.cgst,
+      sgst: tax.sgst,
+      igst: tax.igst,
       adjustment,
       grand_total,
     });
   }, [formData.items, formData.state, formData.discount, settings]);
 
-  // --- Save Logic ---
   const saveInvoice = async () => {
     try {
       const customer = await getCustomerByExactName(formData.shipTo);
-      const customerId = customer.customer_id;
-
       const finalBillNo = buildFinalBillNo(formData.billNo, formData.date);
 
       const payload = {
-        customer_id: customerId,
+        customer_id: customer.customer_id,
         ship_to: formData.shipTo,
         bill_no: finalBillNo,
         date: formData.date,
-        terms_of_payment:
-          formData.terms?.trim() !== "" ? formData.terms : "30 Days",
+        terms_of_payment: formData.terms?.trim() !== '' ? formData.terms : '30 Days',
         state: formData.state,
         total_quantity: Number(totals.totalQty) || 0,
         sub_total: Number(totals.sub_total) || 0,
@@ -332,62 +326,70 @@ export default function InvoiceForm() {
         igst: Number(totals.igst) || 0,
         grand_total: Number(totals.grand_total) || 0,
         discount: Number(formData.discount) || 0,
-        items: (formData.items || []).map((item) => ({
-          item_name: item.name || item.item_name,
-          hsn: item.hsn,
-          quantity: Number(item.qty || item.quantity) || 0,
-          price: Number(item.rate || item.price) || 0,
-          total: Number(item.amount || item.total) || 0,
-        })),
+        items: formData.items
+          .filter((item) => (item.name || '').trim())
+          .map((item) => ({
+            item_name: item.name,
+            hsn: item.hsn,
+            quantity: Number(item.qty) || 0,
+            price: Number(item.rate) || 0,
+            total: Number(item.amount) || 0,
+          })),
       };
 
       let response;
-      console.log("This is IInvoice ID", formData.invoice_id);
-
       if (isExistingInvoice && formData.invoice_id) {
         response = await updateInvoice(formData.invoice_id, payload);
       } else {
         response = await createInvoice(payload);
       }
 
-      console.log("This is Saved Response ", response);
-
       const invoiceId = response.invoiceId || formData.invoice_id;
-
       if (invoiceId) {
         showToast(
-          isExistingInvoice
-            ? "Invoice updated successfully!"
-            : "Invoice saved successfully!",
-          "success"
+          isExistingInvoice ? 'Invoice updated.' : 'Invoice saved.',
+          'success'
         );
         navigate(`/invoice/${invoiceId}`);
       } else {
-        showToast("Invoice saved but ID missing in response", "warning");
+        showToast('Saved but invoice ID was missing.', 'warning');
       }
     } catch (error) {
-      console.error("Error saving invoice:", error);
-      showToast(error.message || "Failed to save invoice. Please try again.", "error");
+      showToast(error.message || 'Failed to save invoice.', 'error');
     }
   };
 
-  // --- Render ---
+  const filteredCustomers = formData.shipTo
+    ? customers.filter((c) =>
+        c.name.toLowerCase().includes(formData.shipTo.toLowerCase())
+      )
+    : customers;
+
   if (isLoadingInvoice) {
     return (
-      <div className="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-center justify-center">
-        <p className="text-gray-500 dark:text-gray-400 text-lg">Loading invoice...</p>
+      <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          <BackButton className="!mb-4" />
+          <InvoiceFormSkeleton />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
+    <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <BackButton />
-        <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg">
-          <FormHeader handleClear={handleClear} />
+        <BackButton className="!mb-2" />
 
-          <form onSubmit={handleSaveClick} className="space-y-8">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-8">
+          <FormHeader
+            isEditMode={isExistingInvoice}
+            billNo={formData.billNo}
+            grandTotal={totals.grand_total}
+            onClear={handleClear}
+          />
+
+          <form onSubmit={handleSaveClick} className="space-y-6">
             <TopInfoPanel
               formData={formData}
               handleChange={handleChange}
@@ -397,17 +399,12 @@ export default function InvoiceForm() {
               isSuggestionsVisible={isSuggestionsVisible}
               setIsSuggestionsVisible={setIsSuggestionsVisible}
               isLoadingCustomers={isLoadingCustomers}
-              intraStateLabel={settings.default_state_label || "State"}
+              intraStateLabel={settings.default_state_label || 'State'}
+              cgstRate={settings.cgst_rate}
+              sgstRate={settings.sgst_rate}
+              igstRate={settings.igst_rate}
               errors={errors}
-              filteredCustomers={
-                formData.shipTo
-                  ? customers.filter((c) =>
-                      c.name
-                        .toLowerCase()
-                        .includes(formData.shipTo.toLowerCase())
-                    )
-                  : customers
-              }
+              filteredCustomers={filteredCustomers}
             />
 
             <ItemsList
@@ -416,28 +413,42 @@ export default function InvoiceForm() {
               addItem={addItem}
               removeItem={removeItem}
             />
-            {errors.items && (
-              <p className="text-red-500 dark:text-red-400 text-sm font-medium flex items-center gap-1">
-                <span>⚠</span> {errors.items}
-              </p>
-            )}
+            <FieldError message={errors.items} />
 
-            <div className="flex justify-end pt-4">
-              <button
-                type="submit"
-                className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-md"
-              >
-                {isExistingInvoice
-                  ? "Update Invoice"
-                  : "Save & Preview Invoice"}
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-slate-100">
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  to="/invoices"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50"
+                >
+                  <List size={16} />
+                  All invoices
+                </Link>
+                <Link
+                  to="/create-customer"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50"
+                >
+                  New customer
+                </Link>
+              </div>
+
+              <button type="submit" className="btn-cta-primary !py-2.5 !px-6 !text-sm">
+                <FileText size={18} />
+                {isExistingInvoice ? 'Update invoice' : 'Save & preview'}
               </button>
             </div>
 
             <ConfirmSaveModal
               isOpen={showConfirmSave}
-              onCancel={handleCancelSave}
-              onConfirm={handleConfirmSave}
+              onCancel={() => setShowConfirmSave(false)}
+              onConfirm={async () => {
+                setShowConfirmSave(false);
+                await saveInvoice();
+              }}
               isExistingInvoice={isExistingInvoice}
+              grandTotal={totals.grand_total}
+              customerName={formData.shipTo}
+              billNo={formData.billNo}
             />
           </form>
         </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { MenuIcon, CloseIcon } from "../Reusables/Icons";
 import { FileText } from "lucide-react";
+import FinancialYearSelector from "../Reusables/FinancialYearSelector";
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -57,8 +58,12 @@ const Header = () => {
             </Link>
           </div>
 
+          <div className="hidden lg:flex flex-1 justify-center px-4 max-w-xl">
+            <FinancialYearSelector compact className="w-full" />
+          </div>
+
           {/* Desktop Navigation */}
-          <div className="hidden md:flex md:items-center md:space-x-8">
+          <div className="hidden md:flex md:items-center md:space-x-6 shrink-0">
             <Link to="/" className={navLinkClasses}>
               Dashboard
             </Link>
@@ -137,8 +142,11 @@ const Header = () => {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden pt-2 pb-4 space-y-1">
+            <div className="px-3 pb-3">
+              <FinancialYearSelector />
+            </div>
             <Link
-              to="/dashboard"
+              to="/"
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
               Dashboard

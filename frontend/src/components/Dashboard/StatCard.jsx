@@ -1,50 +1,88 @@
-// StatCard.jsx
-import React from "react";
-import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import React from 'react';
+import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
-const StatCard = ({ title, value, icon: Icon, change, changeType, onClick }) => {
-  const isPositive = changeType === "positive";
+const variants = {
+  primary: {
+    icon: 'bg-indigo-50 text-indigo-600',
+    ring: 'hover:ring-indigo-100',
+  },
+  success: {
+    icon: 'bg-emerald-50 text-emerald-600',
+    ring: 'hover:ring-emerald-100',
+  },
+  warning: {
+    icon: 'bg-amber-50 text-amber-600',
+    ring: 'hover:ring-amber-100',
+  },
+  danger: {
+    icon: 'bg-red-50 text-red-600',
+    ring: 'hover:ring-red-100',
+  },
+  neutral: {
+    icon: 'bg-slate-100 text-slate-600',
+    ring: 'hover:ring-slate-100',
+  },
+};
+
+const StatCard = ({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  change,
+  changeType,
+  changeLabel = 'vs last month',
+  onClick,
+  variant = 'primary',
+}) => {
+  const isPositive = changeType === 'positive';
+  const styles = variants[variant] || variants.primary;
+  const interactive = Boolean(onClick);
 
   return (
-    <div 
+    <div
       onClick={onClick}
-      className={`bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md flex flex-col justify-between ${onClick ? "cursor-pointer hover:shadow-lg transition-all transform hover:-translate-y-1" : ""}`}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') onClick();
+            }
+          : undefined
+      }
+      className={`bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between min-h-[140px] ring-2 ring-transparent transition-all ${styles.ring} ${
+        interactive ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''
+      }`}
     >
-      <div className="flex justify-between items-start">
-        <span className="text-gray-500 dark:text-gray-400 font-medium">
-          {title}
-        </span>
-        <div className="bg-indigo-50 dark:bg-indigo-900/10 p-2.5 rounded-xl group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/20 transition-all">
-          {Icon && <Icon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
-        </div>
+      <div className="flex justify-between items-start gap-3">
+        <span className="text-sm font-medium text-slate-500 leading-snug">{title}</span>
+        {Icon && (
+          <div className={`p-2.5 rounded-xl shrink-0 ${styles.icon}`}>
+            <Icon className="h-5 w-5" />
+          </div>
+        )}
       </div>
 
-      <div>
-        <h3 className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-          {value}
-        </h3>
+      <div className="mt-3">
+        <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{value}</h3>
+        {subtitle && <p className="text-xs text-slate-400 mt-1">{subtitle}</p>}
 
-        {/* Only show change if it's provided */}
-        {change !== null &&
-          change !== undefined &&
-          changeType !== null &&
-          changeType !== undefined && (
-            <div
-              className={`mt-1 flex items-center text-sm ${
-                isPositive ? "text-green-500" : "text-red-500"
-              }`}
-            >
-              {isPositive ? (
-                <ArrowUpRight className="h-4 w-4" />
-              ) : (
-                <ArrowDownRight className="h-4 w-4" />
-              )}
-              <span>{change}</span>
-              <span className="text-gray-500 dark:text-gray-400 ml-1">
-                vs last month
-              </span>
-            </div>
-          )}
+        {change != null && changeType != null && (
+          <div
+            className={`mt-2 flex items-center text-sm font-medium ${
+              isPositive ? 'text-emerald-600' : 'text-red-500'
+            }`}
+          >
+            {isPositive ? (
+              <ArrowUpRight className="h-4 w-4 shrink-0" />
+            ) : (
+              <ArrowDownRight className="h-4 w-4 shrink-0" />
+            )}
+            <span>{change}%</span>
+            <span className="text-slate-400 font-normal ml-1">{changeLabel}</span>
+          </div>
+        )}
       </div>
     </div>
   );
