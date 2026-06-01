@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModel";
 import { Toast } from "../Reusables/Toast";
 import { EditIcon, TrashIcon, SearchIcon } from "../Reusables/Icons";
-import { getAllCustomers, deleteCustomer } from "../../lib/api";
+import { getAllCustomers, deleteCustomer, deleteCustomersBulk } from "../../lib/api";
 import { Calendar, FileDown, FileText, Download, Printer, Users } from "lucide-react";
 import { BackButton } from "../Reusables/BackButton";
 
@@ -19,6 +19,8 @@ export default function CustomerList() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState(null);
   const [toast, setToast] = useState({ message: "", type: "info" });
+  const [selectedCustomers, setSelectedCustomers] = useState([]);
+  const [isBulkDelete, setIsBulkDelete] = useState(false);
   
   // Export states
   const [isExporting, setIsExporting] = useState(false);
@@ -63,17 +65,36 @@ export default function CustomerList() {
   const handleCloseModal = () => {
     setIsDeleteModalOpen(false);
     setCustomerToDelete(null);
+    setIsBulkDelete(false);
   };
 
   const handleConfirmDelete = async () => {
-    if (!customerToDelete) return;
+    if (isBulkDelete) {
+      if (selectedCustomers.length === 0) return;
+      try {
+        await deleteCustomersBulk(selectedCustomers);
+        setCustomers(customers.filter((c) => !selectedCustomers.includes(c.customer_id)));
+        setToast({
+          message: `${selectedCustomers.length} customers were deleted successfully.`,
+          type: "success"
+        });
+        setSelectedCustomers([]);
+      } catch (err) {
+        console.error("Error deleting customers:", err);
+        setToast({ message: "Error: Failed to delete customers.", type: "error" });
+      } finally {
+        handleCloseModal();
+      }
+      return;
+    }
 
+    if (!customerToDelete) return;
     const customerId = customerToDelete.customer_id;
 
     try {
       await deleteCustomer(customerId);
-
       setCustomers(customers.filter((c) => c.customer_id !== customerId));
+      setSelectedCustomers(prev => prev.filter(id => id !== customerId));
       setToast({
         message: `Customer "${customerToDelete.name}" was deleted successfully.`,
         type: "success"
@@ -83,6 +104,29 @@ export default function CustomerList() {
       setToast({ message: "Error: Failed to delete customer.", type: "error" });
     } finally {
       handleCloseModal();
+    }
+  };
+
+  const handleToggleSelect = (customerId) => {
+    setSelectedCustomers(prev => 
+      prev.includes(customerId) 
+        ? prev.filter(id => id !== customerId) 
+        : [...prev, customerId]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedCustomers.length === filteredCustomers.length && filteredCustomers.length > 0) {
+      setSelectedCustomers([]);
+    } else {
+      setSelectedCustomers(filteredCustomers.map(c => c.customer_id));
+    }
+  };
+
+  const handleBulkDeleteClick = () => {
+    if (selectedCustomers.length > 0) {
+      setIsBulkDelete(true);
+      setIsDeleteModalOpen(true);
     }
   };
 
@@ -172,6 +216,15 @@ export default function CustomerList() {
               </div>
               
               <div className="flex gap-2 relative">
+                {selectedCustomers.length > 0 && (
+                  <button
+                    onClick={handleBulkDeleteClick}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 transition-all shadow-md animate-in fade-in slide-in-from-top-2 duration-300 font-semibold"
+                  >
+                    <TrashIcon className="w-5 h-5" />
+                    <span>Delete ({selectedCustomers.length})</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
                   className="px-4 py-2 border-2 border-slate-200 dark:border-gray-600 text-slate-700 dark:text-gray-200 rounded-lg text-center hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center justify-center gap-2 font-semibold transition-all"
@@ -233,6 +286,14 @@ export default function CustomerList() {
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-auto">
               <thead className="bg-gray-50 dark:bg-gray-700/50">
                 <tr>
+                  <th className="px-3 py-2 text-left">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                      onChange={handleToggleSelectAll}
+                      checked={filteredCustomers.length > 0 && selectedCustomers.length === filteredCustomers.length}
+                    />
+                  </th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     S.No.
                   </th>
@@ -261,6 +322,14 @@ export default function CustomerList() {
                     onClick={() => navigate(`/customer/${customer.customer_id}`)}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
                   >
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                        checked={selectedCustomers.includes(customer.customer_id)}
+                        onChange={() => handleToggleSelect(customer.customer_id)}
+                      />
+                    </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {customers.findIndex(
                         (c) => c.customer_id === customer.customer_id
@@ -339,7 +408,8 @@ export default function CustomerList() {
         isOpen={isDeleteModalOpen}
         onClose={handleCloseModal}
         onConfirm={handleConfirmDelete}
-        customerName={customerToDelete ? customerToDelete.name : ""}
+        customerName={isBulkDelete ? `${selectedCustomers.length} selected` : customerToDelete?.name}
+        isBulk={isBulkDelete}
       />
 
       {/* Hidden Print Section for Customer Directory PDF */}

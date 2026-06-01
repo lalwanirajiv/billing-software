@@ -13,6 +13,7 @@ import { ToastProvider } from "./context/ToastContext"; // ✅ global toast
 import Reports from "./components/Reports/Reports";
 import CustomerAccount from "./components/List Of Customers/CustomerAccount";
 import Footer from "./components/Footer/Footer";
+import Settings from "./components/Settings/Settings";
 
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 
@@ -84,6 +85,7 @@ function App() {
               <Route path="/invoices" element={<InvoiceList />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/customer/:id" element={<CustomerAccount />} />
+              <Route path="/settings" element={<Settings />} />
             </Routes>
           </main>
           <Footer />

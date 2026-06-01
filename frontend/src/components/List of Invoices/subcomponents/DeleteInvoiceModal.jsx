@@ -1,7 +1,7 @@
 import React from "react";
 import { AlertTriangleIcon } from "../../Reusables/Icons";
 
-export const DeleteInvoiceModal = ({ isOpen, onClose, onConfirm, billNo }) => {
+export const DeleteInvoiceModal = ({ isOpen, onClose, onConfirm, billNo, isBulk }) => {
   if (!isOpen) return null;
   return (
     <div
@@ -15,8 +15,10 @@ export const DeleteInvoiceModal = ({ isOpen, onClose, onConfirm, billNo }) => {
             Confirm Deletion
           </h2>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Are you sure you want to delete Invoice number: {billNo}? This
-            action cannot be undone.
+            {isBulk 
+              ? `Are you sure you want to delete ${billNo} items? This action cannot be undone.`
+              : `Are you sure you want to delete Invoice number: ${billNo}? This action cannot be undone.`
+            }
           </p>
         </div>
         <div className="mt-8 flex justify-center space-x-4">

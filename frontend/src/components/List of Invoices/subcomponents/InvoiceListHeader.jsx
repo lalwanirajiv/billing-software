@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { SearchIcon } from "../../Reusables/Icons";
+import { SearchIcon, DeleteIcon } from "../../Reusables/Icons";
 import { Calendar, FileDown, FileText } from "lucide-react";
 
 export const InvoiceListHeader = ({ 
@@ -10,7 +10,9 @@ export const InvoiceListHeader = ({
   setSearchTerm, 
   statusFilter,
   setStatusFilter,
-  onExportClick 
+  onExportClick,
+  selectedCount,
+  onBulkDelete
 }) => {
   const statuses = ["All", "Paid", "Due", "Overdue"];
 
@@ -87,6 +89,15 @@ export const InvoiceListHeader = ({
 
         {/* Actions */}
         <div className="flex gap-2">
+          {selectedCount > 0 && (
+            <button
+              onClick={onBulkDelete}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 transition-colors shadow-md animate-in fade-in slide-in-from-top-2 duration-300"
+            >
+              <DeleteIcon className="w-5 h-5" />
+              <span>Delete ({selectedCount})</span>
+            </button>
+          )}
           <button
             onClick={onExportClick}
             className="btn-cta-secondary"

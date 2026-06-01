@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Toast } from "../Reusables/Toast";
-import { getAllInvoices, deleteInvoice, getDetailedInvoicesByDate } from "../../lib/api";
+import { getAllInvoices, deleteInvoice, deleteInvoicesBulk, getDetailedInvoicesByDate } from "../../lib/api";
 
 // Sub-components
 import { InvoiceListHeader } from "./subcomponents/InvoiceListHeader";
@@ -24,6 +24,8 @@ export default function InvoiceList() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
   const [toast, setToast] = useState({ message: "", type: "info" });
+  const [selectedInvoices, setSelectedInvoices] = useState([]);
+  const [isBulkDelete, setIsBulkDelete] = useState(false);
   
   // Export states
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -111,13 +113,33 @@ export default function InvoiceList() {
   const handleCloseModal = () => {
     setIsDeleteModalOpen(false);
     setInvoiceToDelete(null);
+    setIsBulkDelete(false);
   };
 
   const handleConfirmDelete = async () => {
+    if (isBulkDelete) {
+      if (selectedInvoices.length === 0) return;
+      try {
+        await deleteInvoicesBulk(selectedInvoices);
+        setInvoices(invoices.filter((i) => !selectedInvoices.includes(i.invoice_id)));
+        setToast({
+          message: `${selectedInvoices.length} invoices were deleted successfully.`,
+          type: "success"
+        });
+        setSelectedInvoices([]);
+      } catch (err) {
+        setToast({ message: "Error: Failed to delete invoices.", type: "error" });
+      } finally {
+        handleCloseModal();
+      }
+      return;
+    }
+
     if (!invoiceToDelete) return;
     try {
       await deleteInvoice(invoiceToDelete.invoice_id);
       setInvoices(invoices.filter((i) => i.invoice_id !== invoiceToDelete.invoice_id));
+      setSelectedInvoices(prev => prev.filter(id => id !== invoiceToDelete.invoice_id));
       setToast({
         message: `Invoice #${invoiceToDelete.bill_no} was deleted successfully.`,
         type: "success"
@@ -126,6 +148,29 @@ export default function InvoiceList() {
       setToast({ message: "Error: Failed to delete invoice.", type: "error" });
     } finally {
       handleCloseModal();
+    }
+  };
+
+  const handleToggleSelect = (invoiceId) => {
+    setSelectedInvoices(prev => 
+      prev.includes(invoiceId) 
+        ? prev.filter(id => id !== invoiceId) 
+        : [...prev, invoiceId]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedInvoices.length === filteredInvoices.length && filteredInvoices.length > 0) {
+      setSelectedInvoices([]);
+    } else {
+      setSelectedInvoices(filteredInvoices.map(i => i.invoice_id));
+    }
+  };
+
+  const handleBulkDeleteClick = () => {
+    if (selectedInvoices.length > 0) {
+      setIsBulkDelete(true);
+      setIsDeleteModalOpen(true);
     }
   };
 
@@ -229,6 +274,8 @@ export default function InvoiceList() {
             statusFilter={statusFilter}
             setStatusFilter={setStatusFilter}
             onExportClick={() => setIsExportModalOpen(true)}
+            selectedCount={selectedInvoices.length}
+            onBulkDelete={handleBulkDeleteClick}
           />
 
           <InvoiceTable 
@@ -240,6 +287,9 @@ export default function InvoiceList() {
             onDeleteClick={handleDeleteClick}
             searchTerm={searchTerm}
             dateFilter={dateFilter}
+            selectedInvoices={selectedInvoices}
+            onToggleSelect={handleToggleSelect}
+            onToggleSelectAll={handleToggleSelectAll}
           />
         </div>
 
@@ -247,7 +297,8 @@ export default function InvoiceList() {
           isOpen={isDeleteModalOpen}
           onClose={handleCloseModal}
           onConfirm={handleConfirmDelete}
-          billNo={invoiceToDelete?.bill_no}
+          billNo={isBulkDelete ? `${selectedInvoices.length} selected` : invoiceToDelete?.bill_no}
+          isBulk={isBulkDelete}
         />
 
         <ExportModal 

@@ -16,7 +16,17 @@ import { writeFile } from "@tauri-apps/plugin-fs";
 import { BackButton } from "../Reusables/BackButton";
 
 // Custom styles for PDF generation to ensure single-page and premium look
-const pdfStyles = ``;
+const pdfStyles = `
+  @media print {
+    #print-section {
+      padding: 0.5cm !important;
+      margin: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    .max-w-4xl { max-width: 100% !important; margin: 0 !important; }
+  }
+`;
 
 const formatDateToDDMMYYYY = (dateString) => {
   if (!dateString) return "";
@@ -87,8 +97,22 @@ export default function Invoice() {
 
     try {
       const name = invoiceData.customer_name || invoiceData.ship_to || "Customer";
-      const billNo = invoiceData.invoice_id || invoiceData.bill_no || "NA";
-      const fileName = `Bill No - ${billNo} ${name}.pdf`;
+      const billNo = invoiceData.bill_no || "NA";
+      
+      // Calculate Financial Year from invoice date
+      let fyPrefix = "";
+      if (invoiceData.date) {
+        const invDate = new Date(invoiceData.date);
+        const invMonth = invDate.getMonth() + 1;
+        const invYear = invDate.getFullYear();
+        const fyStartYear = invMonth >= 4 ? invYear : invYear - 1;
+        const fyEndYear = fyStartYear + 1;
+        fyPrefix = `${fyStartYear}-${fyEndYear}`;
+      }
+
+      // Check if billNo already contains formatting, otherwise add FY prefix
+      const displayBillNo = billNo.includes('_') ? billNo : `${fyPrefix}_${billNo}`;
+      const fileName = `${displayBillNo}_${name}.pdf`;
 
       showToast("Preparing single-page PDF...", "info");
 
@@ -119,11 +143,25 @@ export default function Invoice() {
       };
 
       try {
-        // Try native Tauri Dialog first
-        const filePath = await save({
-          filters: [{ name: 'PDF', extensions: ['pdf'] }],
-          defaultPath: fileName
-        });
+        const defaultDirPath = localStorage.getItem("pdf-save-path");
+        let filePath = "";
+
+        if (defaultDirPath) {
+          // If a default folder is set, auto-construct the path
+          // Check if path ends with slash to avoid double slashes
+          const separator = defaultDirPath.includes("/") ? "/" : "\\";
+          filePath = defaultDirPath.endsWith(separator) 
+            ? `${defaultDirPath}${fileName}` 
+            : `${defaultDirPath}${separator}${fileName}`;
+          
+          showToast(`Saving to default folder: ${defaultDirPath}`, "info");
+        } else {
+          // Fallback to manual save dialog
+          filePath = await save({
+            filters: [{ name: 'PDF', extensions: ['pdf'] }],
+            defaultPath: fileName
+          });
+        }
 
         if (filePath) {
           showToast("Generating PDF content...", "info");
@@ -186,16 +224,16 @@ export default function Invoice() {
         {/* ✅ Added id="print-section" */}
         <div
           id="print-section"
-          className="bg-white dark:bg-gray-800 p-4 sm:p-6 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg"
+          className="bg-white dark:bg-gray-800 p-4 sm:p-5 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg"
           ref={printRef}
         >
-          <header className="text-center mb-4 border-b pb-2 border-gray-300 dark:border-gray-600">
-            <p className="text-sm font-semibold">EK TUHI NIRANKAR</p>
-            <h1 className="text-xl font-bold uppercase">Tax Invoice</h1>
+          <header className="text-center mb-3 border-b pb-1.5 border-gray-300 dark:border-gray-600">
+            <p className="text-[10px] font-semibold">EK TUHI NIRANKAR</p>
+            <h1 className="text-lg font-bold uppercase">Tax Invoice</h1>
           </header>
 
           <main>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
               <ShipToDetails data={invoiceData} />
               <SellerDetails />
             </div>

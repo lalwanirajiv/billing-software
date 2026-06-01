@@ -52,7 +52,7 @@ const InvoiceTotals = ({ data }) => {
         </tbody>
       </table>
 
-      <div className="border border-gray-300 dark:border-gray-600 p-2 rounded-md mt-2 text-center min-h-[60px] flex flex-col justify-end">
+      <div className="border border-gray-300 dark:border-gray-600 p-2 rounded-md mt-2 text-center min-h-[50px] flex flex-col justify-end">
         <p className="font-bold">SIGN</p>
       </div>
     </div>

@@ -67,6 +67,17 @@ export const deleteCustomer = async (id) => {
   return { message: "Customer deleted successfully!" };
 };
 
+export const deleteCustomersBulk = async (ids) => {
+  const db = await getDB();
+  for (const id of ids) {
+    await db.execute(
+      `UPDATE customers SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP WHERE customer_id = $1`,
+      [id]
+    );
+  }
+  return { message: `${ids.length} customers deleted successfully!` };
+};
+
 export const getTopCustomers = async (limit = 5) => {
   const db = await getDB();
   const res = await db.select(
@@ -248,12 +259,24 @@ export const checkInvoice = async (billNo) => {
 
 export const getNextBillNo = async () => {
   const db = await getDB();
-  // Cast to integer to get the max numeric bill number, ignoring non-numeric ones
   const res = await db.select(
-    `SELECT MAX(CAST(bill_no AS INTEGER)) as max_bill FROM invoices WHERE bill_no GLOB '[0-9]*'`
+    `SELECT bill_no FROM invoices`
   );
-  const maxBill = res[0]?.max_bill;
-  return maxBill ? Number(maxBill) + 1 : 1;
+  
+  let maxNum = 0;
+  res.forEach(row => {
+    const billNo = row.bill_no;
+    if (billNo && billNo.includes('_')) {
+      const parts = billNo.split('_');
+      const num = parseInt(parts[1], 10);
+      if (!isNaN(num) && num > maxNum) maxNum = num;
+    } else if (/^\d+$/.test(billNo)) {
+      const num = parseInt(billNo, 10);
+      if (num > maxNum) maxNum = num;
+    }
+  });
+
+  return maxNum + 1;
 };
 
 export const deleteInvoice = async (id) => {
@@ -263,6 +286,15 @@ export const deleteInvoice = async (id) => {
   await db.execute(`DELETE FROM items WHERE invoice_id = $1`, [id]);
   await db.execute(`DELETE FROM invoices WHERE invoice_id = $1`, [id]);
   return { message: "Invoice deleted successfully!" };
+};
+
+export const deleteInvoicesBulk = async (ids) => {
+  const db = await getDB();
+  for (const id of ids) {
+    await db.execute(`DELETE FROM items WHERE invoice_id = $1`, [id]);
+    await db.execute(`DELETE FROM invoices WHERE invoice_id = $1`, [id]);
+  }
+  return { message: `${ids.length} invoices deleted successfully!` };
 };
 
 // ================= STATS ================= //

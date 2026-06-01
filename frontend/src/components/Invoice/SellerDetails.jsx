@@ -1,7 +1,7 @@
 import React from "react";
 
 const SellerDetails = () => (
-  <div className="border border-gray-300 dark:border-gray-600 p-3 rounded-md">
+  <div className="border border-gray-300 dark:border-gray-600 p-2 rounded-md">
     <h3 className="font-bold text-lg mb-1">KAMAL READYMADE STORES</h3>
     <p className="text-sm">Shop No 7, 1st Floor Deluxe Chamber</p>
     <p className="text-sm">Mirghawad Ahmedabad - 380001</p>

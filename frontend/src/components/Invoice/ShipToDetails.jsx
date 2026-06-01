@@ -21,8 +21,8 @@ const ShipToDetails = ({ data }) => {
   }, [data?.customer_id]);
 
   return (
-    <div className="border border-gray-300 dark:border-gray-600 p-4 rounded-lg flex flex-col space-y-2">
-      <h3 className="font-bold text-lg uppercase text-gray-800 dark:text-gray-200">
+    <div className="border border-gray-300 dark:border-gray-600 p-2 rounded-lg flex flex-col space-y-1">
+      <h3 className="font-bold text-base uppercase text-gray-800 dark:text-gray-200">
         {data.shipTo || customer?.name || "Customer Name"}
       </h3>
       <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">

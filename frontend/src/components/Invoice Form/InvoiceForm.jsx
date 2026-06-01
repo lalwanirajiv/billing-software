@@ -72,10 +72,21 @@ export default function InvoiceForm() {
         // Clear stale data so new invoice form starts blank
         localStorage.removeItem("invoice-data");
         localStorage.removeItem("customer-data");
-        // Auto-populate the next bill number
+        // Auto-populate the next bill number with Financial Year
         try {
+          const now = new Date();
+          const currentMonth = now.getMonth() + 1; // 1-12
+          const currentYear = now.getFullYear();
+          const fyStartYear = currentMonth >= 4 ? currentYear : currentYear - 1;
+          const fyEndYear = fyStartYear + 1;
+          const fyPrefix = `${fyStartYear}-${fyEndYear}`;
+          
           const nextBillNo = await getNextBillNo();
-          setFormData({ ...initialFormData, billNo: String(nextBillNo) });
+          setFormData({ 
+            ...initialFormData, 
+            billNo: String(nextBillNo),
+            date: now.toISOString().split("T")[0] // Also set current date
+          });
         } catch (e) {
           setFormData(initialFormData);
         }
@@ -113,7 +124,9 @@ export default function InvoiceForm() {
             invoice_id: parsedData.invoice_id || invoiceIdParam,
             shipTo: parsedData.ship_to || parsedCustomer?.name || "",
             gstin: parsedCustomer?.gstin || "N/A",
-            billNo: parsedData.bill_no || "",
+            billNo: parsedData.bill_no && parsedData.bill_no.includes("_") 
+              ? parsedData.bill_no.split("_")[1] 
+              : parsedData.bill_no || "",
             address_line1: parsedCustomer?.address_line1 || "N/A",
             address_line2: parsedCustomer?.address_line2 || "N/A",
             date: parsedData.date
@@ -325,14 +338,22 @@ export default function InvoiceForm() {
         console.warn("Customer lookup failed:", err);
       }
 
-      // 3. Build payload
+      // 3. Build payload with dynamic Financial Year prefix
+      const invDate = formData.date ? new Date(formData.date) : new Date();
+      const invMonth = invDate.getMonth() + 1;
+      const invYear = invDate.getFullYear();
+      const fyStartYear = invMonth >= 4 ? invYear : invYear - 1;
+      const fyEndYear = fyStartYear + 1;
+      const fyPrefix = `${fyStartYear}-${fyEndYear}`;
+
+      const finalBillNo = /^\d+$/.test(String(formData.billNo).trim())
+        ? `${fyPrefix}_${parseInt(formData.billNo, 10)}`
+        : String(formData.billNo).trim();
+
       const payload = {
         customer_id: customerId,
         ship_to: formData.shipTo,
-        // Store bill number cleanly: if purely numeric use integer string, else keep as-is
-        bill_no: /^\d+$/.test(String(formData.billNo).trim())
-          ? String(parseInt(formData.billNo, 10))
-          : String(formData.billNo).trim(),
+        bill_no: finalBillNo,
         date: formData.date,
         terms_of_payment:
           formData.terms?.trim() !== "" ? formData.terms : "30 Days",

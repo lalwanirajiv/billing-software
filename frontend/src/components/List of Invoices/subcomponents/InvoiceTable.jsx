@@ -10,7 +10,10 @@ export const InvoiceTable = ({
   onEditClick, 
   onDeleteClick,
   searchTerm,
-  dateFilter
+  dateFilter,
+  selectedInvoices,
+  onToggleSelect,
+  onToggleSelectAll
 }) => {
   if (filteredInvoices.length === 0) {
     return (
@@ -40,6 +43,14 @@ export const InvoiceTable = ({
       <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead className="bg-gray-50 dark:bg-gray-700/50">
           <tr>
+            <th className="px-6 py-3 text-left">
+              <input 
+                type="checkbox" 
+                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                onChange={onToggleSelectAll}
+                checked={filteredInvoices.length > 0 && selectedInvoices.length === filteredInvoices.length}
+              />
+            </th>
             <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
               S.No.
             </th>
@@ -70,6 +81,14 @@ export const InvoiceTable = ({
               onClick={() => onRowClick(invoice.invoice_id)}
               className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
             >
+              <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                <input 
+                  type="checkbox" 
+                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                  checked={selectedInvoices.includes(invoice.invoice_id)}
+                  onChange={() => onToggleSelect(invoice.invoice_id)}
+                />
+              </td>
               <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
                 {allInvoices.findIndex(
                   (i) => i.invoice_id === invoice.invoice_id
