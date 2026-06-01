@@ -1,80 +1,73 @@
-import React from "react";
-
-const inputBase =
-  "w-full p-2 bg-white dark:bg-gray-700 border rounded-md focus:ring-2 text-gray-900 dark:text-gray-100";
-const inputOk =
-  "border-gray-300 dark:border-gray-600 focus:ring-indigo-500";
-const inputErr = "border-red-500 dark:border-red-500 focus:ring-red-500";
-
-const FieldError = ({ message }) =>
-  message ? (
-    <p className="text-red-500 dark:text-red-400 text-xs mt-1">{message}</p>
-  ) : null;
+import React from 'react';
+import { User } from 'lucide-react';
+import {
+  formLabelClass,
+  formInputClass,
+  formSectionClass,
+  formHintClass,
+} from './customerFormStyles';
+import FieldError from './FieldError';
 
 const CustomerInfoSection = ({ customerData, handleChange, errors = {} }) => (
-  <div className="bg-gray-50 dark:bg-gray-700/50 p-5 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
-    <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
-      Customer Information
-    </h2>
+  <section className={formSectionClass}>
+    <div className="flex items-center gap-2">
+      <User size={18} className="text-brand-primary" />
+      <h2 className="text-base font-semibold text-slate-900">Customer details</h2>
+    </div>
 
     <div>
-      <label
-        htmlFor="name"
-        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-      >
-        Customer Name <span className="text-red-500">*</span>
+      <label htmlFor="name" className={formLabelClass}>
+        Customer name <span className="text-red-500">*</span>
       </label>
       <input
         id="name"
         type="text"
         name="name"
-        placeholder="e.g., Acme Corporation"
+        placeholder="e.g. Acme Corporation"
         value={customerData.name}
         onChange={handleChange}
-        className={`${inputBase} ${errors.name ? inputErr : inputOk}`}
+        autoComplete="organization"
+        className={formInputClass(Boolean(errors.name))}
       />
       <FieldError message={errors.name} />
     </div>
 
     <div>
-      <label
-        htmlFor="phone"
-        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-      >
-        Phone Number
+      <label htmlFor="phone" className={formLabelClass}>
+        Phone number
       </label>
       <input
         id="phone"
         type="tel"
         name="phone"
-        placeholder="e.g., 9876543210"
+        placeholder="e.g. 9876543210"
         value={customerData.phone}
         onChange={handleChange}
-        className={`${inputBase} ${errors.phone ? inputErr : inputOk}`}
+        autoComplete="tel"
+        className={formInputClass(Boolean(errors.phone))}
       />
       <FieldError message={errors.phone} />
+      <p className={formHintClass}>Used on invoices and customer directory exports.</p>
     </div>
 
     <div>
-      <label
-        htmlFor="gstin"
-        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-      >
+      <label htmlFor="gstin" className={formLabelClass}>
         GSTIN
       </label>
       <input
         id="gstin"
         type="text"
         name="gstin"
-        placeholder="e.g., 22AAAAA0000A1Z5"
+        placeholder="e.g. 22AAAAA0000A1Z5"
         value={customerData.gstin}
         onChange={handleChange}
         maxLength={15}
-        className={`${inputBase} ${errors.gstin ? inputErr : inputOk}`}
+        className={`${formInputClass(Boolean(errors.gstin))} font-mono uppercase`}
       />
       <FieldError message={errors.gstin} />
+      <p className={formHintClass}>15-character GST identification (optional).</p>
     </div>
-  </div>
+  </section>
 );
 
 export default CustomerInfoSection;

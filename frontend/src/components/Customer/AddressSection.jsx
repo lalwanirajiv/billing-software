@@ -1,49 +1,54 @@
-const AddressSection = ({ customerData, handleChange }) => (
-  <div className="bg-gray-50 dark:bg-gray-700/50 p-5 rounded-lg border dark:border-gray-600 space-y-4">
-    <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
-      Address
-    </h2>
+import { MapPin } from 'lucide-react';
+import {
+  formLabelClass,
+  formInputClass,
+  formSectionClass,
+  formHintClass,
+} from './customerFormStyles';
+import FieldError from './FieldError';
+
+const AddressSection = ({ customerData, handleChange, errors = {} }) => (
+  <section className={formSectionClass}>
+    <div className="flex items-center gap-2">
+      <MapPin size={18} className="text-brand-primary" />
+      <h2 className="text-base font-semibold text-slate-900">Billing address</h2>
+    </div>
+
     <div>
-      <label
-        htmlFor="address_line1"
-        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-      >
-        Address Line 1 <span className="text-red-500">*</span>
+      <label htmlFor="address_line1" className={formLabelClass}>
+        Address line 1 <span className="text-red-500">*</span>
       </label>
       <input
         id="address_line1"
         type="text"
         name="address_line1"
-        placeholder="e.g., 123 Business Rd"
+        placeholder="e.g. 123 Business Road"
         value={customerData.address_line1}
         onChange={handleChange}
         required
-        className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md 
-                   focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100
-                   invalid:border-red-500 invalid:ring-red-500"
+        autoComplete="address-line1"
+        className={formInputClass(Boolean(errors.address_line1))}
       />
+      <FieldError message={errors.address_line1} />
     </div>
 
-    {/* Address Line 2 (Optional) */}
     <div>
-      <label
-        htmlFor="address_line2"
-        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-      >
-        Address Line 2
+      <label htmlFor="address_line2" className={formLabelClass}>
+        Address line 2
       </label>
       <input
         id="address_line2"
         type="text"
         name="address_line2"
-        placeholder="e.g., Suite 456"
+        placeholder="e.g. Suite 456, Landmark"
         value={customerData.address_line2}
         onChange={handleChange}
-        className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md 
-                   focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
+        autoComplete="address-line2"
+        className={formInputClass(false)}
       />
+      <p className={formHintClass}>City, state, PIN, or additional details.</p>
     </div>
-  </div>
+  </section>
 );
 
 export default AddressSection;

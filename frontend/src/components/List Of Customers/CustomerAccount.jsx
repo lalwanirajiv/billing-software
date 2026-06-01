@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getCustomerById, getInvoicesByCustomerId } from "../../lib/api";
+import { useFinancialYear } from "../../context/FinancialYearContext";
+import FinancialYearSelector from "../Reusables/FinancialYearSelector";
 import { ChevronLeft, User, Phone, MapPin, FileText, IndianRupee, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "../../context/ToastContext";
 import { BackButton } from "../Reusables/BackButton";
@@ -9,6 +11,7 @@ export default function CustomerAccount() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { startDate, endDate, label: fyLabel } = useFinancialYear();
   
   const [customer, setCustomer] = useState(null);
   const [invoices, setInvoices] = useState([]);
@@ -24,7 +27,7 @@ export default function CustomerAccount() {
     try {
       setIsLoading(true);
       const customerData = await getCustomerById(id);
-      const invoicesData = await getInvoicesByCustomerId(id);
+      const invoicesData = await getInvoicesByCustomerId(id, startDate, endDate);
       
       setCustomer(customerData);
       setInvoices(invoicesData);
@@ -48,7 +51,7 @@ export default function CustomerAccount() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, showToast]);
+  }, [id, showToast, startDate, endDate]);
 
   useEffect(() => {
     fetchData();
@@ -102,6 +105,12 @@ export default function CustomerAccount() {
         <div className="mb-4">
           <BackButton />
         </div>
+        <div className="mb-4 lg:hidden">
+          <FinancialYearSelector />
+        </div>
+
+        <p className="text-sm font-medium text-brand-primary mb-4">{fyLabel} · Customer account</p>
+
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex gap-3">
              <Link

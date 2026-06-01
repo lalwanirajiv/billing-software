@@ -1,110 +1,135 @@
-import React, { useState } from "react";
-import { X, Download, Printer } from "lucide-react";
+import React, { useState } from 'react';
+import { X, Download, Printer, FileStack } from 'lucide-react';
+import { getDatePresets } from '../../Reports/reportsUtils';
 
 export const ExportModal = ({ isOpen, onClose, onExportCSV, onExportPDF }) => {
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   if (!isOpen) return null;
 
-  const handleExport = (format, isAll) => {
-    const start = isAll ? "" : startDate;
-    const end = isAll ? "" : endDate;
-
-    if (!isAll && (!start || !end)) {
-      alert("Please select both From and To dates for range export.");
-      return;
-    }
-
-    if (format === "csv") {
-      onExportCSV(start, end);
-    } else {
-      onExportPDF(start, end);
-    }
+  const applyPreset = (preset) => {
+    setStartDate(preset.start);
+    setEndDate(preset.end);
   };
 
+  const runExport = (format, isAll) => {
+    const start = isAll ? '' : startDate;
+    const end = isAll ? '' : endDate;
+    if (!isAll && (!start || !end)) return;
+    if (format === 'csv') onExportCSV(start, end);
+    else onExportPDF(start, end);
+  };
+
+  const presets = getDatePresets().filter((p) => p.id !== 'all');
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-        <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-700/30">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-lg border border-slate-200 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Export Invoices</h2>
-            <p className="text-xs text-gray-500 mt-1">Select your export preference and format</p>
+            <h2 className="text-lg font-bold text-slate-900">Export invoices</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Save CSV to a folder or print-ready PDF</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white dark:hover:bg-gray-700 rounded-full transition-all shadow-sm">
-            <X size={20} className="text-gray-500" />
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+            aria-label="Close"
+          >
+            <X size={20} />
           </button>
         </div>
 
-        <div className="p-8 space-y-8">
-          {/* Option 1: Full Export */}
-          <div className="p-4 rounded-xl border-2 border-dashed border-gray-100 dark:border-gray-700 hover:border-blue-100 dark:hover:border-blue-900 transition-colors bg-white dark:bg-gray-800 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                Export All Invoices
-              </h3>
-              <span className="text-[10px] font-black uppercase text-gray-400">Recommended for backups</span>
+        <div className="p-6 space-y-6">
+          <div className="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+            <div className="flex items-center gap-2 mb-3">
+              <FileStack size={18} className="text-brand-primary" />
+              <h3 className="font-semibold text-slate-900 text-sm">Export everything</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => runExport('csv', true)}
+                className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium hover:border-brand-primary transition-colors"
+              >
+                <Download size={16} />
+                CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => runExport('pdf', true)}
+                className="btn-cta-primary !py-2.5 !text-sm w-full"
+              >
+                <Printer size={16} />
+                Print PDF
+              </button>
+            </div>
+          </div>
+
+          <div className="relative flex items-center gap-3">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-xs font-medium text-slate-400 uppercase">or date range</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {presets.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => applyPreset(preset)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-brand-primary hover:text-white transition-colors"
+                >
+                  {preset.label}
+                </button>
+              ))}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <button 
-                onClick={() => handleExport("csv", true)}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-xl border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all text-xs"
-              >
-                <Download size={16} /> Excel (CSV)
-              </button>
-              <button 
-                onClick={() => handleExport("pdf", true)}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-black transition-all shadow-md text-xs"
-              >
-                <Printer size={16} /> Print PDF
-              </button>
-            </div>
-          </div>
-
-          <div className="relative flex items-center justify-center">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100 dark:border-gray-700"></div></div>
-            <span className="relative px-4 bg-white dark:bg-gray-800 text-[10px] font-black uppercase text-gray-300">OR</span>
-          </div>
-
-          {/* Option 2: Date Range */}
-          <div className="space-y-4">
-            <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              Export by Date Range
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider">From Date</label>
-                <input 
-                  type="date" 
-                  value={startDate} 
+              <div>
+                <label className="text-xs font-medium text-slate-500 mb-1 block">From</label>
+                <input
+                  type="date"
+                  value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full p-3 bg-gray-50 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 transition-all rounded-xl text-sm font-bold"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/25"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider">To Date</label>
-                <input 
-                  type="date" 
-                  value={endDate} 
+              <div>
+                <label className="text-xs font-medium text-slate-500 mb-1 block">To</label>
+                <input
+                  type="date"
+                  value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full p-3 bg-gray-50 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 transition-all rounded-xl text-sm font-bold"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/25"
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button 
-                onClick={() => handleExport("csv", false)}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 text-blue-700 font-bold rounded-xl border border-blue-100 hover:bg-blue-100 transition-all text-xs"
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => runExport('csv', false)}
+                disabled={!startDate || !endDate}
+                className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium disabled:opacity-40 hover:border-brand-primary"
               >
-                <Download size={16} /> Range CSV
+                <Download size={16} />
+                Range CSV
               </button>
-              <button 
-                onClick={() => handleExport("pdf", false)}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 dark:shadow-none text-xs"
+              <button
+                type="button"
+                onClick={() => runExport('pdf', false)}
+                disabled={!startDate || !endDate}
+                className="btn-cta-primary !py-2.5 !text-sm disabled:opacity-40"
               >
-                <Printer size={16} /> Range PDF
+                <Printer size={16} />
+                Range PDF
               </button>
             </div>
           </div>

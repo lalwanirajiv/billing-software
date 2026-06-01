@@ -9,6 +9,7 @@ import { installGlobalErrorHandlers, logger } from "./lib/logger";
 import { ToastProvider } from "./context/ToastContext";
 
 import { CompanySettingsProvider } from "./context/CompanySettingsContext";
+import { FinancialYearProvider } from "./context/FinancialYearContext";
 
 import AppShell from "./components/AppShell";
 import ErrorBoundary from "./components/Reusables/ErrorBoundary";
@@ -119,9 +120,9 @@ function App() {
         <ToastProvider>
 
           <CompanySettingsProvider>
-
-            <AppShell />
-
+            <FinancialYearProvider>
+              <AppShell />
+            </FinancialYearProvider>
           </CompanySettingsProvider>
 
         </ToastProvider>

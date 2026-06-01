@@ -1,56 +1,84 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { DeleteConfirmationModal } from "./DeleteConfirmationModel";
-import { useToast } from "../../context/ToastContext";
-import { EditIcon, TrashIcon, SearchIcon } from "../Reusables/Icons";
-import { getAllCustomers, deleteCustomer, deleteCustomersBulk } from "../../lib/api";
-import { Calendar, FileDown, FileText, Download, Printer, Users } from "lucide-react";
-import { BackButton } from "../Reusables/BackButton";
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { DeleteConfirmationModal } from './DeleteConfirmationModel';
+import { useToast } from '../../context/ToastContext';
+import { EditIcon, TrashIcon } from '../Reusables/Icons';
+import { getAllCustomers, deleteCustomer, deleteCustomersBulk, getInvoicesByDateRange } from '../../lib/api';
+import { useFinancialYear } from '../../context/FinancialYearContext';
+import FinancialYearSelector from '../Reusables/FinancialYearSelector';
+import { Search, UserPlus, Trash2, AlertTriangle, RefreshCw, MapPin, Phone } from 'lucide-react';
+import { BackButton } from '../Reusables/BackButton';
+import CustomerListHeader from './CustomerListHeader';
+import CustomerListSkeleton from './CustomerListSkeleton';
+import CustomerListStats from './CustomerListStats';
+import CustomerPrintView from './CustomerPrintView';
+import { saveCsvFile } from '../../lib/csvExport';
 
 export default function CustomerList() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { startDate, endDate, label: fyLabel } = useFinancialYear();
   const [customers, setCustomers] = useState([]);
+  const [fyInvoiceCount, setFyInvoiceCount] = useState(0);
+  const [activeCustomersInFy, setActiveCustomersInFy] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filteredCustomers, setFilteredCustomers] = useState([]);
-
+  const [searchTerm, setSearchTerm] = useState('');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState(null);
   const [selectedCustomers, setSelectedCustomers] = useState([]);
   const [isBulkDelete, setIsBulkDelete] = useState(false);
-  
-  // Export states
   const [exportData, setExportData] = useState([]);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const data = await getAllCustomers();
-        setCustomers(data);
-        setFilteredCustomers(data);
-      } catch (err) {
-        setError(err.message);
-        setCustomers([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchCustomers();
-  }, []);
+  const fetchCustomers = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [data, fyInvoices] = await Promise.all([
+        getAllCustomers(),
+        getInvoicesByDateRange(startDate, endDate),
+      ]);
+      setCustomers(data);
+      setFyInvoiceCount(fyInvoices.length);
+      const activeIds = new Set(
+        fyInvoices.map((i) => i.customer_id).filter((id) => id != null)
+      );
+      setActiveCustomersInFy(activeIds.size);
+    } catch (err) {
+      setError(err.message);
+      setCustomers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [startDate, endDate]);
 
   useEffect(() => {
-    const results = customers.filter((customer) =>
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+    fetchCustomers();
+  }, [fetchCustomers]);
+
+  const filteredCustomers = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return customers;
+    return customers.filter(
+      (c) =>
+        c.name?.toLowerCase().includes(q) ||
+        c.phone_number?.toLowerCase().includes(q) ||
+        c.gstin?.toLowerCase().includes(q) ||
+        c.address_line1?.toLowerCase().includes(q) ||
+        c.address_line2?.toLowerCase().includes(q)
     );
-    setFilteredCustomers(results);
-  }, [searchTerm, customers]);
+  }, [customers, searchTerm]);
+
+  const withGstinCount = useMemo(
+    () => customers.filter((c) => c.gstin?.trim()).length,
+    [customers]
+  );
 
   const handleDeleteClick = (customer) => {
     setCustomerToDelete(customer);
+    setIsBulkDelete(false);
     setIsDeleteModalOpen(true);
   };
 
@@ -65,12 +93,11 @@ export default function CustomerList() {
       if (selectedCustomers.length === 0) return;
       try {
         await deleteCustomersBulk(selectedCustomers);
-        setCustomers(customers.filter((c) => !selectedCustomers.includes(c.customer_id)));
-        showToast(`${selectedCustomers.length} customers were deleted successfully.`, "success");
+        setCustomers((prev) => prev.filter((c) => !selectedCustomers.includes(c.customer_id)));
+        showToast(`${selectedCustomers.length} customers deleted.`, 'success');
         setSelectedCustomers([]);
       } catch (err) {
-        console.error("Error deleting customers:", err);
-        showToast("Error: Failed to delete customers.", "error");
+        showToast('Failed to delete customers.', 'error');
       } finally {
         handleCloseModal();
       }
@@ -82,22 +109,20 @@ export default function CustomerList() {
 
     try {
       await deleteCustomer(customerId);
-      setCustomers(customers.filter((c) => c.customer_id !== customerId));
-      setSelectedCustomers(prev => prev.filter(id => id !== customerId));
-      showToast(`Customer "${customerToDelete.name}" was deleted successfully.`, "success");
-    } catch (err) {
-      console.error("Error deleting customer:", err);
-      showToast("Error: Failed to delete customer.", "error");
+      setCustomers((prev) => prev.filter((c) => c.customer_id !== customerId));
+      setSelectedCustomers((prev) => prev.filter((id) => id !== customerId));
+      showToast(`"${customerToDelete.name}" was deleted.`, 'success');
+    } catch {
+      showToast('Failed to delete customer.', 'error');
     } finally {
       handleCloseModal();
     }
   };
 
-  const handleToggleSelect = (customerId) => {
-    setSelectedCustomers(prev => 
-      prev.includes(customerId) 
-        ? prev.filter(id => id !== customerId) 
-        : [...prev, customerId]
+  const handleToggleSelect = (customerId, e) => {
+    e?.stopPropagation();
+    setSelectedCustomers((prev) =>
+      prev.includes(customerId) ? prev.filter((id) => id !== customerId) : [...prev, customerId]
     );
   };
 
@@ -105,7 +130,7 @@ export default function CustomerList() {
     if (selectedCustomers.length === filteredCustomers.length && filteredCustomers.length > 0) {
       setSelectedCustomers([]);
     } else {
-      setSelectedCustomers(filteredCustomers.map(c => c.customer_id));
+      setSelectedCustomers(filteredCustomers.map((c) => c.customer_id));
     }
   };
 
@@ -116,272 +141,263 @@ export default function CustomerList() {
     }
   };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
     try {
-      showToast("Preparing Customer Directory CSV...", "info");
-      const headers = ["Customer Name", "Address Line 1", "Address Line 2", "Phone", "GSTIN"];
-      const csvRows = [headers.join(",")];
-
-      filteredCustomers.forEach(c => {
-        const row = [
-          `"${c.name}"`,
-          `"${c.address_line1 || ""}"`,
-          `"${c.address_line2 || ""}"`,
-          c.phone_number || "",
-          c.gstin || ""
-        ];
-        csvRows.push(row.join(","));
+      const headers = ['Customer Name', 'Address Line 1', 'Address Line 2', 'Phone', 'GSTIN'];
+      const csvRows = [headers.join(',')];
+      filteredCustomers.forEach((c) => {
+        csvRows.push(
+          [
+            `"${c.name}"`,
+            `"${c.address_line1 || ''}"`,
+            `"${c.address_line2 || ''}"`,
+            c.phone_number || '',
+            c.gstin || '',
+          ].join(',')
+        );
       });
-
-      const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", `Customer_Directory_${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = "hidden";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      showToast("Customer directory exported successfully!", "success");
+      const result = await saveCsvFile(
+        csvRows.join('\n'),
+        `customers_${new Date().toISOString().slice(0, 10)}.csv`,
+        { title: 'Save customers CSV' }
+      );
+      if (result.cancelled) {
+        showToast('Export cancelled.', 'info');
+        return;
+      }
+      showToast('Customer directory saved.', 'success');
     } catch {
-      showToast("Failed to export CSV.", "error");
+      showToast('Failed to export CSV.', 'error');
     }
   };
 
   const handleExportPDF = () => {
-    showToast("Generating PDF directory...", "info");
     setExportData(filteredCustomers);
-    setIsExportMenuOpen(false);
     setTimeout(() => {
       window.print();
-      setExportData([]); // Clear after printing
-    }, 500);
+      setExportData([]);
+    }, 400);
   };
 
   if (isLoading) {
     return (
-      <div className="text-center p-10 font-semibold text-gray-700 dark:text-gray-300">
-        Loading Customers...
+      <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          <BackButton className="!mb-4" />
+          <CustomerListSkeleton />
+        </div>
       </div>
     );
   }
 
   if (error) {
-    return <div className="text-center p-10 text-red-500">Error: {error}</div>;
+    return (
+      <div className="min-h-screen bg-slate-50 p-8 flex flex-col items-center justify-center">
+        <div className="bg-white rounded-2xl border border-red-100 p-8 max-w-md text-center shadow-sm">
+          <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-3" />
+          <p className="text-slate-900 font-semibold mb-1">Could not load customers</p>
+          <p className="text-red-600 text-sm mb-4">{error}</p>
+          <button type="button" onClick={fetchCustomers} className="btn-cta-primary">
+            Try again
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="bg-gray-100 dark:bg-slate-900 min-h-screen">
-      <div className="no-print">
-        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-          <BackButton />
-          {/* Header & Search */}
-          <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              All Customers
-            </h1>
-            <div className="w-full sm:w-auto flex items-center gap-4">
-              <div className="relative w-full sm:w-64">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <SearchIcon />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search customers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              
-              <div className="flex gap-2 relative">
-                {selectedCustomers.length > 0 && (
-                  <button
-                    onClick={handleBulkDeleteClick}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 transition-all shadow-md animate-in fade-in slide-in-from-top-2 duration-300 font-semibold"
-                  >
-                    <TrashIcon className="w-5 h-5" />
-                    <span>Delete ({selectedCustomers.length})</span>
-                  </button>
-                )}
-                <button
-                  onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                  className="px-4 py-2 border-2 border-slate-200 dark:border-gray-600 text-slate-700 dark:text-gray-200 rounded-lg text-center hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center justify-center gap-2 font-semibold transition-all"
-                >
-                  <FileDown size={18} /> Export
-                </button>
-                
-                {isExportMenuOpen && (
-                  <div className="absolute top-full mt-2 right-0 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <button 
-                      onClick={handleExportCSV}
-                      className="w-full px-4 py-2.5 text-left text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3"
-                    >
-                      <Download size={16} className="text-blue-500" /> Excel (CSV)
-                    </button>
-                    <button 
-                      onClick={handleExportPDF}
-                      className="w-full px-4 py-2.5 text-left text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3"
-                    >
-                      <Printer size={16} className="text-blue-500" /> Print PDF
-                    </button>
-                  </div>
-                )}
+    <div className="min-h-screen bg-slate-50">
+      <div className="no-print max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <BackButton className="!mb-2" />
 
-                <Link
-                  to="/create-customer"
-                  className="btn-cta-primary whitespace-nowrap"
-                >
-                  <Users size={20} />
-                  <span>Add New Customer</span>
-                </Link>
-              </div>
-            </div>
+        <div className="mb-4 lg:hidden">
+          <FinancialYearSelector />
+        </div>
+
+        <CustomerListHeader
+          totalCount={customers.length}
+          filteredCount={filteredCustomers.length}
+          searchTerm={searchTerm.trim()}
+          fyLabel={fyLabel}
+          onExportCsv={handleExportCSV}
+          onExportPdf={handleExportPDF}
+          isExportOpen={isExportMenuOpen}
+          setExportOpen={setIsExportMenuOpen}
+        />
+
+        <CustomerListStats
+          totalCount={customers.length}
+          filteredCount={filteredCustomers.length}
+          withGstinCount={withGstinCount}
+          activeInFy={activeCustomersInFy}
+          invoicesInFy={fyInvoiceCount}
+          isFiltering={Boolean(searchTerm.trim())}
+        />
+
+        {/* Toolbar */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <div className="relative flex-1">
+            <Search
+              size={18}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+            />
+            <input
+              type="search"
+              placeholder="Search by name, phone, GSTIN, or address…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary"
+            />
           </div>
+          {selectedCustomers.length > 0 && (
+            <button
+              type="button"
+              onClick={handleBulkDeleteClick}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors shrink-0"
+            >
+              <Trash2 size={18} />
+              Delete ({selectedCustomers.length})
+            </button>
+          )}
+        </div>
 
-        {/* No customers */}
         {filteredCustomers.length === 0 ? (
-          <div className="text-center py-16 px-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-            <h2 className="text-xl font-medium text-gray-800 dark:text-gray-200">
-              {searchTerm ? "No Customers Found" : "No Customers Yet"}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm py-16 px-6 text-center">
+            <UserPlus className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-slate-900">
+              {searchTerm ? 'No customers found' : 'No customers yet'}
             </h2>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
+            <p className="text-slate-500 text-sm mt-2 max-w-sm mx-auto">
               {searchTerm
-                ? `Your search for "${searchTerm}" did not return any results.`
-                : "Want to add one? "}
-              {!searchTerm && (
-                <Link
-                  to="/create-customer"
-                  className="text-blue-600 dark:text-blue-400 hover:underline font-semibold"
-                >
-                  Create a new customer
-                </Link>
-              )}
+                ? `Nothing matches "${searchTerm}". Try a different search.`
+                : 'Add your first customer to start creating invoices faster.'}
             </p>
+            {!searchTerm && (
+              <Link to="/create-customer" className="btn-cta-primary inline-flex mt-6 !text-sm">
+                <UserPlus size={18} />
+                Add customer
+              </Link>
+            )}
           </div>
         ) : (
-          // Table wrapper with responsive scroll
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto sm:overflow-x-visible">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-auto">
-              <thead className="bg-gray-50 dark:bg-gray-700/50">
-                <tr>
-                  <th className="px-3 py-2 text-left">
-                    <input 
-                      type="checkbox" 
-                      className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
-                      onChange={handleToggleSelectAll}
-                      checked={filteredCustomers.length > 0 && selectedCustomers.length === filteredCustomers.length}
-                    />
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    S.No.
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Customer Name
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Address
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Phone
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    GSTIN
-                  </th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredCustomers.map((customer) => (
-                  <tr
-                    key={customer.customer_id}
-                    onClick={() => navigate(`/customer/${customer.customer_id}`)}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
-                  >
-                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                      <input 
-                        type="checkbox" 
-                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
-                        checked={selectedCustomers.includes(customer.customer_id)}
-                        onChange={() => handleToggleSelect(customer.customer_id)}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wide border-b border-slate-100">
+                    <th className="px-4 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-slate-300 text-brand-primary focus:ring-brand-primary cursor-pointer"
+                        onChange={handleToggleSelectAll}
+                        checked={
+                          filteredCustomers.length > 0 &&
+                          selectedCustomers.length === filteredCustomers.length
+                        }
+                        aria-label="Select all"
                       />
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {customers.findIndex(
-                        (c) => c.customer_id === customer.customer_id
-                      ) + 1}
-                    </td>
-
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white leading-tight uppercase tracking-tight">
-                        {customer.name}
-                      </span>
-                    </td>
-
-                    {/* Truncated address */}
-                    <td className="px-3 py-2 whitespace-nowrap max-w-xs">
-                      <div className="text-sm text-gray-600 dark:text-gray-300 truncate">
-                        {customer.address_line1
-                          ? customer.address_line1.length > 10
-                            ? customer.address_line1.slice(0, 10) + "..."
-                            : customer.address_line1
-                          : ""}
-                      </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                        {customer.address_line2
-                          ? customer.address_line2.length > 10
-                            ? customer.address_line2.slice(0, 10) + "..."
-                            : customer.address_line2
-                          : ""}
-                      </div>
-                    </td>
-
-                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                      {customer.phone_number}
-                    </td>
-                    <td className="px-3 py-2 text-left whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                      {customer.gstin}
-                    </td>
-
-                    {/* Actions: edit/delete */}
-                    <td className="px-3 py-2 whitespace-nowrap text-left text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/edit-customer/${customer.customer_id}`);
-                          }}
-                          role="button"
-                          className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-indigo-600 hover:border-indigo-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-indigo-400 dark:hover:border-indigo-500 transition"
-                          title="Edit Customer"
-                        >
-                          <EditIcon className="w-4 h-4" />
-                        </span>
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(customer);
-                          }}
-                          role="button"
-                          className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-red-600 hover:border-red-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-red-400 dark:hover:border-red-500 transition"
-                          title="Delete Customer"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </span>
-                      </div>
-                    </td>
+                    </th>
+                    <th className="px-4 py-3 w-12">#</th>
+                    <th className="px-4 py-3">Customer</th>
+                    <th className="px-4 py-3 hidden md:table-cell">Contact</th>
+                    <th className="px-4 py-3 hidden lg:table-cell">Address</th>
+                    <th className="px-4 py-3">GSTIN</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredCustomers.map((customer, index) => (
+                    <tr
+                      key={customer.customer_id}
+                      onClick={() => navigate(`/customer/${customer.customer_id}`)}
+                      className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                    >
+                      <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded border-slate-300 text-brand-primary focus:ring-brand-primary cursor-pointer"
+                          checked={selectedCustomers.includes(customer.customer_id)}
+                          onChange={(e) => handleToggleSelect(customer.customer_id, e)}
+                          aria-label={`Select ${customer.name}`}
+                        />
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-400 tabular-nums">{index + 1}</td>
+                      <td className="px-4 py-3.5">
+                        <p className="font-semibold text-slate-900 group-hover:text-brand-primary transition-colors">
+                          {customer.name}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5 md:hidden flex items-center gap-1">
+                          <Phone size={12} />
+                          {customer.phone_number || '—'}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3.5 hidden md:table-cell text-slate-600">
+                        {customer.phone_number || (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 hidden lg:table-cell max-w-[220px]">
+                        <p className="text-slate-600 truncate flex items-center gap-1">
+                          <MapPin size={14} className="text-slate-400 shrink-0" />
+                          <span className="truncate">
+                            {[customer.address_line1, customer.address_line2]
+                              .filter(Boolean)
+                              .join(', ') || '—'}
+                          </span>
+                        </p>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {customer.gstin ? (
+                          <span className="inline-flex px-2 py-0.5 rounded-md bg-slate-100 text-xs font-mono font-medium text-slate-700">
+                            {customer.gstin}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-xs">—</span>
+                        )}
+                      </td>
+                      <td
+                        className="px-4 py-3.5 text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/edit-customer/${customer.customer_id}`)}
+                            className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-brand-primary hover:border-brand-primary/40 transition-colors"
+                            title="Edit"
+                          >
+                            <EditIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteClick(customer)}
+                            className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 transition-colors"
+                            title="Delete"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={fetchCustomers}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-brand-primary"
+              >
+                <RefreshCw size={14} />
+                Refresh list
+              </button>
+              <span className="text-xs text-slate-400">
+                Click a row to view customer account
+              </span>
+            </div>
           </div>
         )}
-      </div>
-
       </div>
 
       <DeleteConfirmationModal
@@ -392,54 +408,7 @@ export default function CustomerList() {
         isBulk={isBulkDelete}
       />
 
-      {/* Hidden Print Section for Customer Directory PDF */}
-      {exportData.length > 0 && (
-        <div className="hidden print:block p-12 bg-white text-black min-h-screen">
-          <div className="flex justify-between items-start border-b-[6px] border-slate-900 pb-8 mb-10">
-            <div className="space-y-2">
-              <h1 className="text-5xl font-black uppercase tracking-tighter leading-none">Client Directory</h1>
-              <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Official Customer Record Index</p>
-            </div>
-            <div className="text-right space-y-1">
-              <p className="font-black text-xs uppercase text-slate-400">Export Date</p>
-              <p className="font-black text-xl">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-            </div>
-          </div>
-
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-y-2 border-slate-900">
-                <th className="p-4 text-left font-black uppercase text-[10px] tracking-widest border border-slate-200">Customer Entity</th>
-                <th className="p-4 text-left font-black uppercase text-[10px] tracking-widest border border-slate-200">Primary Contact</th>
-                <th className="p-4 text-left font-black uppercase text-[10px] tracking-widest border border-slate-200">Location Details</th>
-                <th className="p-4 text-center font-black uppercase text-[10px] tracking-widest border border-slate-200">GSTIN Reference</th>
-              </tr>
-            </thead>
-            <tbody>
-              {exportData.map((c, i) => (
-                <tr key={i} className="border-b border-slate-100">
-                  <td className="p-4 border border-slate-100 font-black text-lg uppercase">{c.name}</td>
-                  <td className="p-4 border border-slate-100 text-sm font-bold text-slate-600">{c.phone_number}</td>
-                  <td className="p-4 border border-slate-100 text-xs font-bold text-slate-400 leading-relaxed">
-                    {c.address_line1}<br/>{c.address_line2}
-                  </td>
-                  <td className="p-4 border border-slate-100 text-center uppercase text-[10px] font-black">
-                    <span className="bg-slate-100 px-3 py-1 rounded-full">{c.gstin || "N/A"}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          
-          <div className="mt-20 flex justify-between items-end border-t border-slate-100 pt-8 opacity-40">
-            <div>
-              <p className="text-[8px] font-black uppercase tracking-[0.4em]">Confidential Business Record</p>
-              <p className="text-[8px] font-bold text-slate-400 mt-1">Generated via Internal Billing Systems v2.0</p>
-            </div>
-            <p className="text-xs font-bold text-slate-400">{exportData.length} Registered Entities Listed</p>
-          </div>
-        </div>
-      )}
+      <CustomerPrintView customers={exportData} />
 
       <style>{`
         @media print {

@@ -1,7 +1,9 @@
-import React from "react";
+import React from 'react';
 import {
   BarChart,
   Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -10,172 +12,245 @@ import {
   Cell,
   PieChart,
   Pie,
-} from "recharts";
-import { PieChart as PieChartIcon } from "lucide-react";
+} from 'recharts';
+import ChartCard from '../../Dashboard/ChartCard';
+import {
+  chartPalette,
+  chartPaletteItems,
+  statusColors,
+  palette,
+  colors,
+  chartAxis,
+  chartInteraction,
+  rechartsTooltipProps,
+} from '../../../theme';
+import { formatINR } from '../reportsUtils';
 
-const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#ec4899'];
-const STATUS_COLORS = { 'Paid': '#10b981', 'Due': '#f59e0b', 'Overdue': '#ef4444' };
+const STATUS_ORDER = ['Paid', 'Due', 'Overdue'];
+
+const chartTitles = {
+  salesSummary: { title: 'Revenue trend', subtitle: 'Monthly sales in selected period' },
+  customerReport: { title: 'Top customers', subtitle: 'Revenue by customer (top 10)' },
+  taxReport: { title: 'Tax composition', subtitle: 'CGST · SGST · IGST split' },
+};
 
 const VisualInsights = ({ reportType, chart, statusBreakdown, taxComparison, loading }) => {
-  return (
-    <div className={`grid grid-cols-1 ${reportType === 'taxReport' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-8 mb-10 no-print`}>
-      {/* Main Chart */}
-      <div className={`${reportType === 'taxReport' ? 'lg:col-span-2' : 'lg:col-span-2'} bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 min-h-[500px] flex flex-col relative`}>
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm rounded-[2.5rem] z-20">
-            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+  const mainMeta = chartTitles[reportType] || chartTitles.salesSummary;
+  const statusTotal = statusBreakdown.reduce((s, row) => s + (Number(row.count) || 0), 0);
+  const hasMainChart = chart && chart.length > 0;
+
+  const mainChart = (
+    <ChartCard title={mainMeta.title} subtitle={mainMeta.subtitle} loading={loading} bodyClassName="min-h-[320px]">
+      {!hasMainChart && !loading ? (
+        <p className="text-slate-400 text-sm text-center py-20">No chart data for this period</p>
+      ) : (
+        <ResponsiveContainer width="100%" height={320}>
+          {reportType === 'salesSummary' ? (
+            <AreaChart data={chart} margin={{ bottom: 20, left: 0, right: 8, top: 8 }}>
+              <defs>
+                <linearGradient id="reportRevenueGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={colors.primary} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={colors.primary} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartAxis.gridStroke} />
+              <XAxis
+                dataKey="name"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: chartAxis.tickFillReports, fontSize: 10 }}
+                angle={chart.length > 6 ? -35 : 0}
+                textAnchor={chart.length > 6 ? 'end' : 'middle'}
+                height={chart.length > 6 ? 56 : 30}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: chartAxis.tickFillReports, fontSize: 10 }}
+                tickFormatter={(v) => (v >= 100000 ? `₹${(v / 100000).toFixed(1)}L` : v >= 1000 ? `₹${(v / 1000).toFixed(0)}k` : `₹${v}`)}
+                width={48}
+              />
+              <Tooltip
+                {...rechartsTooltipProps}
+                formatter={(value) => [formatINR(value), 'Revenue']}
+                cursor={{ fill: chartInteraction.primaryCursorSubtle }}
+              />
+              <Area
+                type="monotone"
+                dataKey="sales"
+                stroke={colors.primary}
+                strokeWidth={2}
+                fill="url(#reportRevenueGradient)"
+              />
+            </AreaChart>
+          ) : reportType === 'customerReport' ? (
+            <BarChart data={chart} layout="vertical" margin={{ left: 8, right: 16 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke={chartAxis.gridStroke} />
+              <XAxis type="number" hide />
+              <YAxis
+                dataKey="name"
+                type="category"
+                axisLine={false}
+                tickLine={false}
+                width={108}
+                tick={{ fill: chartAxis.tickFillReports, fontSize: 10 }}
+              />
+              <Tooltip
+                {...rechartsTooltipProps}
+                cursor={{ fill: 'transparent' }}
+                formatter={(value) => [formatINR(value), 'Revenue']}
+              />
+              <Bar dataKey="sales" radius={[0, 6, 6, 0]} barSize={20}>
+                {chart.map((e, i) => (
+                  <Cell key={`c-${i}`} fill={chartPaletteItems[i % chartPaletteItems.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          ) : (
+            <PieChart>
+              <Pie
+                data={chart}
+                cx="50%"
+                cy="50%"
+                innerRadius={70}
+                outerRadius={110}
+                paddingAngle={4}
+                dataKey="value"
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+              >
+                {chart.map((e, i) => (
+                  <Cell key={`p-${i}`} fill={chartPalette[i % chartPalette.length]} />
+                ))}
+              </Pie>
+              <Tooltip {...rechartsTooltipProps} formatter={(value) => [formatINR(value), 'Amount']} />
+            </PieChart>
+          )}
+        </ResponsiveContainer>
+      )}
+    </ChartCard>
+  );
+
+  const statusPanel = (
+    <ChartCard
+      title="Payment status"
+      subtitle="Invoice count & value by status"
+      loading={loading}
+      bodyClassName="min-h-[320px]"
+    >
+      <div className="relative h-[180px] mb-4">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={statusBreakdown}
+              cx="50%"
+              cy="50%"
+              innerRadius={52}
+              outerRadius={78}
+              paddingAngle={4}
+              dataKey="count"
+              nameKey="status"
+              stroke="none"
+            >
+              {statusBreakdown.map((entry, index) => (
+                <Cell
+                  key={`status-${entry.status}`}
+                  fill={statusColors[entry.status] || palette.slate[300]}
+                />
+              ))}
+            </Pie>
+            <Tooltip {...rechartsTooltipProps} />
+          </PieChart>
+        </ResponsiveContainer>
+        {statusTotal > 0 && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="text-center">
+              <p className="text-xl font-bold text-slate-900">{statusTotal}</p>
+              <p className="text-[10px] uppercase text-slate-400 font-semibold">Invoices</p>
+            </div>
           </div>
         )}
-        <h3 className="text-xl font-black text-slate-800 mb-10 flex items-center gap-3">
-          <div className="w-1.5 h-6 bg-indigo-600 rounded-full"></div> 
-          {reportType === "salesSummary" ? "Revenue Timeline" : reportType === "customerReport" ? "Customer Value Distribution" : "Tax Breakdown"}
-        </h3>
-        <div className="flex-1 w-full bg-slate-50/50 rounded-3xl p-6">
-          <ResponsiveContainer width="100%" height={380}>
-            {reportType === "salesSummary" ? (
-              <BarChart data={chart} margin={{ bottom: 30 }}>
-                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10, fontWeight: 900}} angle={-45} textAnchor="end" height={60} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10, fontWeight: 900}} />
-                <Tooltip contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontWeight: 800 }} cursor={{ fill: 'rgba(37,99,235,0.03)' }} />
-                <Bar dataKey="sales" radius={[8, 8, 0, 0]} barSize={chart.length > 12 ? 22 : 44}>
-                  {chart.map((e, i) => <Cell key={`c-${i}`} fill={COLORS[i % COLORS.length]} />)}
-                </Bar>
-              </BarChart>
-            ) : reportType === "customerReport" ? (
-              <BarChart data={chart} layout="vertical" margin={{ left: 20 }}>
-                <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={120} tick={{fill: '#64748b', fontSize: 10, fontWeight: 900}} />
-                <Tooltip cursor={{ fill: 'transparent' }} />
-                <Bar dataKey="sales" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={24} />
-              </BarChart>
-            ) : (
-              <PieChart>
-                <Pie 
-                  data={chart} 
-                  cx="50%" 
-                  cy="45%" 
-                  innerRadius={80} 
-                  outerRadius={130} 
-                  paddingAngle={8} 
-                  dataKey="value" 
-                  label={({name, percent}) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                >
-                  {chart.map((e, i) => <Cell key={`p-${i}`} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            )}
+      </div>
+
+      <ul className="space-y-2">
+        {STATUS_ORDER.map((status) => {
+          const row = statusBreakdown.find((s) => s.status === status) || { count: 0, amount: 0 };
+          const color = statusColors[status];
+          return (
+            <li
+              key={status}
+              className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                <div>
+                  <p className="text-xs font-semibold text-slate-700">{status}</p>
+                  <p className="text-[11px] text-slate-400">{row.count} invoices</p>
+                </div>
+              </div>
+              <p className="text-sm font-bold text-slate-900">{formatINR(row.amount)}</p>
+            </li>
+          );
+        })}
+      </ul>
+    </ChartCard>
+  );
+
+  const taxComparisonPanel =
+    reportType === 'taxReport' ? (
+      <ChartCard title="Supply type" subtitle="Intra-state vs inter-state" loading={loading} bodyClassName="min-h-[320px]">
+        <div className="relative h-[180px] mb-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={taxComparison}
+                cx="50%"
+                cy="50%"
+                innerRadius={52}
+                outerRadius={78}
+                paddingAngle={5}
+                dataKey="count"
+                nameKey="name"
+                stroke="none"
+              >
+                <Cell fill={palette.blue[500]} />
+                <Cell fill={palette.violet[500]} />
+              </Pie>
+              <Tooltip {...rechartsTooltipProps} />
+            </PieChart>
           </ResponsiveContainer>
         </div>
-      </div>
-
-      {/* Status Comparison Panel */}
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col relative">
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm rounded-[2.5rem] z-20">
-            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        )}
-        <h3 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3">
-          <PieChartIcon size={20} className="text-blue-600" /> Status Comparison
-        </h3>
-        
-        <div className="flex-1 flex flex-col justify-center">
-          <div className="h-48 mb-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie 
-                  data={statusBreakdown} 
-                  cx="50%" 
-                  cy="50%" 
-                  innerRadius={50} 
-                  outerRadius={70} 
-                  paddingAngle={5} 
-                  dataKey="count" 
-                  nameKey="status"
-                >
-                  {statusBreakdown.map((entry, index) => (
-                    <Cell key={`status-${index}`} fill={STATUS_COLORS[entry.status] || '#cbd5e1'} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="space-y-4">
-            {['Paid', 'Due', 'Overdue'].map(status => {
-              const data = statusBreakdown.find(s => s.status === status) || { count: 0, amount: 0 };
-              const color = STATUS_COLORS[status];
-              return (
-                <div key={status} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }}></div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-tight">{status}</p>
-                      <p className="text-sm font-black text-slate-900">{data.count} Bills</p>
-                    </div>
-                  </div>
-                  <p className="text-sm font-black text-slate-900">₹{Number(data.amount || 0).toLocaleString()}</p>
+        <ul className="space-y-2">
+          {taxComparison.map((item, index) => (
+            <li
+              key={item.name}
+              className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100"
+            >
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: index === 0 ? palette.blue[500] : palette.violet[500] }}
+                />
+                <div>
+                  <p className="text-xs font-semibold text-slate-700">{item.name}</p>
+                  <p className="text-[11px] text-slate-400">{item.count} bills</p>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+              </div>
+              <p className="text-sm font-bold text-slate-900">{formatINR(item.amount)}</p>
+            </li>
+          ))}
+        </ul>
+      </ChartCard>
+    ) : null;
 
-      {/* State vs Interstate Comparison Panel (Tax Report Only) */}
-      {reportType === "taxReport" && (
-        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col relative animate-in fade-in slide-in-from-right-10 duration-500">
-          {loading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm rounded-[2.5rem] z-20">
-              <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          )}
-          <h3 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3">
-            <PieChartIcon size={20} className="text-purple-600" /> State Comparison
-          </h3>
-          
-          <div className="flex-1 flex flex-col justify-center">
-            <div className="h-48 mb-6">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie 
-                    data={taxComparison} 
-                    cx="50%" 
-                    cy="50%" 
-                    innerRadius={50} 
-                    outerRadius={70} 
-                    paddingAngle={5} 
-                    dataKey="count" 
-                    nameKey="name"
-                  >
-                    <Cell fill="#3b82f6" />
-                    <Cell fill="#8b5cf6" />
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="space-y-4">
-              {taxComparison.map((item, index) => (
-                <div key={item.name} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: index === 0 ? '#3b82f6' : '#8b5cf6' }}></div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-tight">{item.name}</p>
-                      <p className="text-sm font-black text-slate-900">{item.count} Bills</p>
-                    </div>
-                  </div>
-                  <p className="text-sm font-black text-slate-900">₹{Number(item.amount || 0).toLocaleString()}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+  return (
+    <div
+      className={`grid grid-cols-1 gap-6 mb-6 no-print ${
+        reportType === 'taxReport' ? 'lg:grid-cols-3' : 'lg:grid-cols-3'
+      }`}
+    >
+      <div className={reportType === 'taxReport' ? 'lg:col-span-1 min-h-[380px]' : 'lg:col-span-2 min-h-[380px]'}>{mainChart}</div>
+      <div>{statusPanel}</div>
+      {taxComparisonPanel && <div>{taxComparisonPanel}</div>}
     </div>
   );
 };

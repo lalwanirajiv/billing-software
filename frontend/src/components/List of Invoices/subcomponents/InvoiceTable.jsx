@@ -1,157 +1,154 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import { EditIcon, DeleteIcon } from "../../Reusables/Icons";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { EditIcon, TrashIcon } from '../../Reusables/Icons';
+import { FileText, RefreshCw } from 'lucide-react';
+import { formatINR, formatInvoiceDate, STATUS_STYLES } from '../invoiceListUtils';
 
-export const InvoiceTable = ({ 
-  filteredInvoices, 
-  allInvoices, 
-  formatDate, 
-  onRowClick, 
-  onEditClick, 
+function StatusBadge({ status }) {
+  const key = status || 'Due';
+  return (
+    <span
+      className={`inline-flex px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded-full ring-1 ring-inset ${
+        STATUS_STYLES[key] || STATUS_STYLES.Due
+      }`}
+    >
+      {key}
+    </span>
+  );
+}
+
+export const InvoiceTable = ({
+  filteredInvoices,
+  formatDate = formatInvoiceDate,
+  onRowClick,
+  onEditClick,
   onDeleteClick,
   searchTerm,
   dateFilter,
+  statusFilter,
   selectedInvoices,
   onToggleSelect,
-  onToggleSelectAll
+  onToggleSelectAll,
+  onRefresh,
 }) => {
+  const hasFilters = Boolean(searchTerm || dateFilter || statusFilter !== 'All');
+
   if (filteredInvoices.length === 0) {
     return (
-      <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-lg shadow">
-        <h2 className="text-xl font-medium text-gray-800 dark:text-gray-200">
-          No Invoices Found
-        </h2>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
-          {searchTerm || dateFilter
-            ? `Your search did not return any results.`
-            : "Want to add one? "}
-          {!(searchTerm || dateFilter) && (
-            <Link
-              to="/invoice-form"
-              className="text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
-              Create a new invoice
-            </Link>
-          )}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm py-16 px-6 text-center">
+        <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+        <h2 className="text-lg font-semibold text-slate-900">No invoices found</h2>
+        <p className="text-slate-500 text-sm mt-2 max-w-sm mx-auto">
+          {hasFilters
+            ? 'Try adjusting search, date, or status filters.'
+            : 'Create your first invoice to start tracking revenue.'}
         </p>
+        {!hasFilters && (
+          <Link to="/invoice-form" className="btn-cta-primary inline-flex mt-6 !text-sm">
+            <FileText size={18} />
+            New invoice
+          </Link>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
-      <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <thead className="bg-gray-50 dark:bg-gray-700/50">
-          <tr>
-            <th className="px-6 py-3 text-left">
-              <input 
-                type="checkbox" 
-                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
-                onChange={onToggleSelectAll}
-                checked={filteredInvoices.length > 0 && selectedInvoices.length === filteredInvoices.length}
-              />
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
-              S.No.
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
-              Customer
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
-              Bill No.
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
-              Bill Date
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
-              Amount
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
-              Status
-            </th>
-            <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-          {filteredInvoices.map((invoice) => (
-            <tr
-              key={invoice.invoice_id}
-              onClick={() => onRowClick(invoice.invoice_id)}
-              className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
-            >
-              <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                <input 
-                  type="checkbox" 
-                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
-                  checked={selectedInvoices.includes(invoice.invoice_id)}
-                  onChange={() => onToggleSelect(invoice.invoice_id)}
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wide border-b border-slate-100">
+              <th className="px-4 py-3 w-10">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-slate-300 text-brand-primary focus:ring-brand-primary cursor-pointer"
+                  onChange={onToggleSelectAll}
+                  checked={
+                    filteredInvoices.length > 0 &&
+                    selectedInvoices.length === filteredInvoices.length
+                  }
+                  aria-label="Select all"
                 />
-              </td>
-              <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                {allInvoices.findIndex(
-                  (i) => i.invoice_id === invoice.invoice_id
-                ) + 1}
-              </td>
-              <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100">
-                {invoice.ship_to}
-              </td>
-              <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                {invoice.bill_no}
-              </td>
-              <td className="px-6 py-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                {formatDate(invoice.date)}
-              </td>
-              <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                ₹{Number(invoice.grand_total).toFixed(2)}
-              </td>
-              <td className="px-6 py-4 font-medium">
-                {invoice.invoice_status ? (
-                  <span
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border
-  ${
-    invoice.invoice_status.toLowerCase() === "paid"
-      ? "text-green-700 bg-green-50 border-green-200 dark:text-green-300 dark:bg-green-900/30 dark:border-green-700"
-      : invoice.invoice_status.toLowerCase() === "due"
-      ? "text-yellow-700 bg-yellow-50 border-yellow-200 dark:text-yellow-300 dark:bg-yellow-900/30 dark:border-yellow-700"
-      : invoice.invoice_status.toLowerCase() === "overdue"
-      ? "text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-900/30 dark:border-red-700"
-      : "text-gray-700 bg-gray-50 border-gray-200 dark:text-gray-300 dark:bg-gray-700/30 dark:border-gray-600"
-  }`}
-                  >
-                    {invoice.invoice_status}
-                  </span>
-                ) : (
-                  "N/A"
-                )}
-              </td>
-
-              <td className="px-6 py-4 text-right">
-                <div className="flex items-center justify-end space-x-2">
-                  <span
-                    onClick={(e) => onEditClick(e, invoice.invoice_id)}
-                    role="button"
-                    className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-indigo-600 hover:border-indigo-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-indigo-400 dark:hover:border-indigo-500 transition"
-                    title="Edit Invoice"
-                  >
-                    <EditIcon className="w-4 h-4" />
-                  </span>
-
-                  <span
-                    onClick={(e) => onDeleteClick(e, invoice)}
-                    role="button"
-                    className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-red-600 hover:border-red-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-red-400 dark:hover:border-red-500 transition"
-                    title="Delete Invoice"
-                  >
-                    <DeleteIcon className="w-4 h-4" />
-                  </span>
-                </div>
-              </td>
+              </th>
+              <th className="px-4 py-3 w-12">#</th>
+              <th className="px-4 py-3">Customer</th>
+              <th className="px-4 py-3">Bill</th>
+              <th className="px-4 py-3 hidden sm:table-cell">Date</th>
+              <th className="px-4 py-3 text-right">Amount</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {filteredInvoices.map((invoice, index) => (
+              <tr
+                key={invoice.invoice_id}
+                onClick={() => onRowClick(invoice.invoice_id)}
+                className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+              >
+                <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-slate-300 text-brand-primary focus:ring-brand-primary cursor-pointer"
+                    checked={selectedInvoices.includes(invoice.invoice_id)}
+                    onChange={() => onToggleSelect(invoice.invoice_id)}
+                    aria-label={`Select bill ${invoice.bill_no}`}
+                  />
+                </td>
+                <td className="px-4 py-3.5 text-slate-400 tabular-nums">{index + 1}</td>
+                <td className="px-4 py-3.5 max-w-[180px]">
+                  <p className="font-semibold text-slate-900 truncate group-hover:text-brand-primary transition-colors">
+                    {invoice.ship_to || '—'}
+                  </p>
+                  <p className="text-xs text-slate-400 sm:hidden mt-0.5">{formatDate(invoice.date)}</p>
+                </td>
+                <td className="px-4 py-3.5 font-semibold text-brand-primary">#{invoice.bill_no}</td>
+                <td className="px-4 py-3.5 hidden sm:table-cell text-slate-600 whitespace-nowrap">
+                  {formatDate(invoice.date)}
+                </td>
+                <td className="px-4 py-3.5 text-right font-semibold text-slate-900 tabular-nums">
+                  {formatINR(invoice.grand_total)}
+                </td>
+                <td className="px-4 py-3.5">
+                  <StatusBadge status={invoice.invoice_status} />
+                </td>
+                <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => onEditClick(e, invoice.invoice_id)}
+                      className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-brand-primary hover:border-brand-primary/40 transition-colors"
+                      title="Edit"
+                    >
+                      <EditIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => onDeleteClick(e, invoice)}
+                      className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 transition-colors"
+                      title="Delete"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-brand-primary"
+        >
+          <RefreshCw size={14} />
+          Refresh list
+        </button>
+        <span className="text-xs text-slate-400">Click a row to view invoice</span>
+      </div>
     </div>
   );
 };

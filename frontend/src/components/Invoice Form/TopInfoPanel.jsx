@@ -1,4 +1,21 @@
-import React from "react";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { User, FileText, Calculator, UserPlus } from 'lucide-react';
+import {
+  formLabelClass,
+  formInputClass,
+  formSectionClass,
+  formHintClass,
+} from '../Reusables/formStyles';
+import FieldError from '../Reusables/FieldError';
+import { formatINR } from '../Dashboard/dashboardUtils';
+
+const SectionTitle = ({ icon: Icon, children }) => (
+  <div className="flex items-center gap-2 pb-1">
+    <Icon size={18} className="text-brand-primary shrink-0" />
+    <h2 className="text-base font-semibold text-slate-900">{children}</h2>
+  </div>
+);
 
 const TopInfoPanel = ({
   formData,
@@ -9,21 +26,20 @@ const TopInfoPanel = ({
   setIsSuggestionsVisible,
   isLoadingCustomers,
   filteredCustomers,
-  intraStateLabel = "State",
+  intraStateLabel = 'State',
+  cgstRate = 2.5,
+  sgstRate = 2.5,
+  igstRate = 5,
   errors = {},
 }) => (
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-    {/* Customer Details */}
-    <div className="bg-gray-50 dark:bg-gray-800/50 p-5 rounded-lg border dark:border-gray-700 space-y-4">
-      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
-        Customer Details
-      </h2>
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    {/* Customer */}
+    <section className={formSectionClass}>
+      <SectionTitle icon={User}>Customer</SectionTitle>
+
       <div>
-        <label
-          htmlFor="customer-search"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          Customer Name
+        <label htmlFor="customer-search" className={formLabelClass}>
+          Customer name <span className="text-red-500">*</span>
         </label>
         <div className="relative">
           <input
@@ -34,256 +50,213 @@ const TopInfoPanel = ({
             onChange={handleChange}
             onFocus={() => setIsSuggestionsVisible(true)}
             onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 150)}
-            className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
+            className={formInputClass(Boolean(errors.shipTo))}
             disabled={isLoadingCustomers}
             autoComplete="off"
-            placeholder={
-              isLoadingCustomers ? "Loading customers..." : "Type to search..."
-            }
+            placeholder={isLoadingCustomers ? 'Loading…' : 'Search existing customers'}
           />
           {isSuggestionsVisible && (
-            <ul className="absolute z-10 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+            <ul className="absolute z-20 w-full bg-white border border-slate-200 rounded-xl mt-1 max-h-56 overflow-y-auto shadow-lg">
               {filteredCustomers.length > 0 ? (
                 filteredCustomers.map((customer) => (
-                  <li
-                    key={customer.customer_id}
-                    onMouseDown={() => handleSuggestionClick(customer)}
-                    className="p-2 text-gray-800 dark:text-gray-100 hover:bg-blue-500 hover:text-white dark:hover:bg-blue-600 cursor-pointer"
-                  >
-                    {customer.name}
+                  <li key={customer.customer_id}>
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-2.5 text-sm text-slate-800 hover:bg-brand-primary hover:text-white transition-colors"
+                      onMouseDown={() => handleSuggestionClick(customer)}
+                    >
+                      {customer.name}
+                      {customer.gstin && (
+                        <span className="block text-xs opacity-70 font-mono">{customer.gstin}</span>
+                      )}
+                    </button>
                   </li>
                 ))
               ) : (
-                <li
-                  className="p-2 text-gray-500 dark:text-gray-400"
-                  key="no-customers-found"
-                >
-                  No customers found.
-                </li>
+                <li className="px-3 py-2 text-sm text-slate-500">No customers found</li>
               )}
-              {/* Add New Customer Link */}
-              <li
-                className="p-2 border-t border-gray-200 dark:border-gray-600"
-                key="add-new-customer"
-              >
-                <a
-                  href="/create-customer"
-                  className="text-indigo-600 dark:text-indigo-400 hover:underline text-sm font-semibold"
+              <li className="border-t border-slate-100">
+                <Link
+                  to="/create-customer"
+                  className="flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-brand-primary hover:bg-slate-50"
                 >
-                  + Add New Customer
-                </a>
+                  <UserPlus size={16} />
+                  Add new customer
+                </Link>
               </li>
             </ul>
           )}
         </div>
+        <FieldError message={errors.shipTo} />
       </div>
-      {errors.shipTo && (
-        <p className="text-red-500 dark:text-red-400 text-xs mt-1 flex items-center gap-1"><span>⚠</span>{errors.shipTo}</p>
-      )}
-      {/* Address Line 1 */}
+
       <div>
-        <label
-          htmlFor="address_line1"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          Address Line 1
+        <label htmlFor="address_line1" className={formLabelClass}>
+          Address
         </label>
         <input
           id="address_line1"
           type="text"
           name="address_line1"
-          placeholder="Auto-populated"
           value={formData.address_line1}
           readOnly
-          className="w-full p-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-300"
+          className={formInputClass(false, true)}
+          placeholder="Filled from customer"
         />
+        {formData.address_line2 && (
+          <input
+            type="text"
+            name="address_line2"
+            value={formData.address_line2}
+            readOnly
+            className={`${formInputClass(false, true)} mt-2`}
+          />
+        )}
       </div>
 
-      {/* Address Line 2 */}
       <div>
-        <label
-          htmlFor="address_line2"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          Address Line 2
-        </label>
-        <input
-          id="address_line2"
-          type="text"
-          name="address_line2"
-          placeholder="Auto-populated"
-          value={formData.address_line2}
-          readOnly
-          className="w-full p-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-300"
-        />
-      </div>
-      <div>
-        <label
-          htmlFor="gstin"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
+        <label htmlFor="gstin" className={formLabelClass}>
           Customer GSTIN
         </label>
         <input
           id="gstin"
           type="text"
           name="gstin"
-          placeholder="Auto-populated"
-          value={formData.gstin || ""}
+          value={formData.gstin || ''}
           readOnly
-          className="w-full p-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-300"
+          className={`${formInputClass(false, true)} font-mono uppercase`}
+          placeholder="—"
         />
       </div>
-    </div>
+    </section>
 
-    {/* Invoice Details */}
-    <div className="bg-gray-50 dark:bg-gray-800/50 p-5 rounded-lg border dark:border-gray-700 space-y-4">
-      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
-        Invoice Details
-      </h2>
+    {/* Invoice meta */}
+    <section className={formSectionClass}>
+      <SectionTitle icon={FileText}>Invoice details</SectionTitle>
+
       <div>
-        <label
-          htmlFor="billNo"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          Bill No.
+        <label htmlFor="billNo" className={formLabelClass}>
+          Bill number <span className="text-red-500">*</span>
         </label>
         <input
           id="billNo"
           type="text"
           name="billNo"
-          placeholder="e.g., INV-001"
           value={formData.billNo}
           onChange={handleChange}
-          className={`w-full p-2 bg-white dark:bg-gray-700 border rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 ${
-            errors.billNo ? "border-red-500 dark:border-red-500" : "border-gray-300 dark:border-gray-600"
-          }`}
+          className={formInputClass(Boolean(errors.billNo))}
+          placeholder="Auto-generated"
         />
-        {errors.billNo && (
-          <p className="text-red-500 dark:text-red-400 text-xs mt-1 flex items-center gap-1"><span>⚠</span>{errors.billNo}</p>
-        )}
+        <FieldError message={errors.billNo} />
       </div>
+
       <div>
-        <label
-          htmlFor="date"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          Date
+        <label htmlFor="date" className={formLabelClass}>
+          Invoice date <span className="text-red-500">*</span>
         </label>
         <input
           id="date"
           type="date"
           name="date"
-          value={formData.date || ""}
+          value={formData.date || ''}
           onChange={handleChange}
-          className={`w-full p-2 bg-white dark:bg-gray-700 border rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 [color-scheme:light] dark:[color-scheme:dark] ${
-            errors.date ? "border-red-500 dark:border-red-500" : "border-gray-300 dark:border-gray-600"
-          }`}
+          className={formInputClass(Boolean(errors.date))}
         />
-        {errors.date && (
-          <p className="text-red-500 dark:text-red-400 text-xs mt-1 flex items-center gap-1"><span>⚠</span>{errors.date}</p>
-        )}
+        <FieldError message={errors.date} />
       </div>
+
       <div>
-        <label
-          htmlFor="terms"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          Payment Terms
+        <label htmlFor="terms" className={formLabelClass}>
+          Payment terms
         </label>
         <input
           id="terms"
           type="text"
           name="terms"
-          placeholder="e.g., Net 30 Days"
-          value={formData.terms || "30 Days"}
+          value={formData.terms || '30 Days'}
           onChange={handleChange}
-          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
+          className={formInputClass(false)}
+          placeholder="e.g. 30 Days"
         />
       </div>
+
       <div>
-        <label
-          htmlFor="state"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          Sale Type
+        <label htmlFor="state" className={formLabelClass}>
+          Sale type
         </label>
         <select
           id="state"
           name="state"
           value={formData.state}
           onChange={handleChange}
-          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
+          className={formInputClass(false)}
         >
-          <option value={intraStateLabel}>{intraStateLabel}</option>
-          <option value="Interstate">Interstate</option>
+          <option value={intraStateLabel}>{intraStateLabel} (CGST + SGST)</option>
+          <option value="Interstate">Interstate (IGST)</option>
         </select>
+        <p className={formHintClass}>Determines which GST columns apply.</p>
       </div>
-    </div>
+    </section>
 
-    {/* Total Panel */}
-    <div className="bg-gray-50 dark:bg-gray-800/50 p-5 rounded-lg border dark:border-gray-700 space-y-2 flex flex-col [color-scheme:light] dark:[color-scheme:dark]">
-      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">
-        Total
-      </h2>
+    {/* Totals */}
+    <section className={`${formSectionClass} flex flex-col`}>
+      <SectionTitle icon={Calculator}>Totals</SectionTitle>
 
-      <div className="flex-grow space-y-2 text-sm">
-        <div className="flex justify-between font-medium">
-          <span className="text-gray-600 dark:text-gray-400">sub_total:</span>
-          <span className="text-gray-900 dark:text-gray-200">
-            ₹{totals.sub_total.toFixed(2)}
+      <div className="flex-1 space-y-2.5 text-sm">
+        <div className="flex justify-between text-slate-600">
+          <span>Subtotal</span>
+          <span className="font-medium text-slate-900 tabular-nums">
+            {formatINR(totals.sub_total)}
           </span>
         </div>
-
-        <div className="flex justify-between">
-          <span className="text-gray-600 dark:text-gray-400">CGST @2.5%:</span>
-          <span className="text-gray-900 dark:text-gray-200">
-            ₹{totals.cgst.toFixed(2)}
-          </span>
+        <div className="flex justify-between text-slate-600">
+          <span>CGST @{cgstRate}%</span>
+          <span className="tabular-nums">{formatINR(totals.cgst)}</span>
         </div>
-
-        <div className="flex justify-between">
-          <span className="text-gray-600 dark:text-gray-400">SGST @2.5%:</span>
-          <span className="text-gray-900 dark:text-gray-200">
-            ₹{totals.sgst.toFixed(2)}
-          </span>
+        <div className="flex justify-between text-slate-600">
+          <span>SGST @{sgstRate}%</span>
+          <span className="tabular-nums">{formatINR(totals.sgst)}</span>
         </div>
-
-        <div className="flex justify-between">
-          <span className="text-gray-600 dark:text-gray-400">IGST @5%:</span>
-          <span className="text-gray-900 dark:text-gray-200">
-            ₹{totals.igst.toFixed(2)}
-          </span>
+        <div className="flex justify-between text-slate-600">
+          <span>IGST @{igstRate}%</span>
+          <span className="tabular-nums">{formatINR(totals.igst)}</span>
         </div>
+        {totals.adjustment !== 0 && (
+          <div className="flex justify-between text-slate-500 text-xs">
+            <span>Rounding</span>
+            <span className="tabular-nums">{formatINR(totals.adjustment)}</span>
+          </div>
+        )}
 
-        <div className="flex justify-between">
-          <span className="text-gray-600 dark:text-gray-400">Adjustment:</span>
-          <span className="text-gray-900 dark:text-gray-200">
-            ₹{totals.adjustment.toFixed(2)}
-          </span>
-        </div>
-
-        <div className="flex justify-between items-center bg-green-50 dark:bg-green-900/20 p-2 rounded-md border border-green-100 dark:border-green-800/30">
-          <span className="text-green-700 dark:text-green-400 font-bold uppercase text-xs tracking-wider">Discount (₹):</span>
+        <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 mt-2">
+          <label htmlFor="discount" className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">
+            Discount (₹)
+          </label>
           <input
+            id="discount"
             type="number"
             name="discount"
+            min="0"
+            step="0.01"
             value={formData.discount}
             onChange={handleChange}
-            className="w-24 p-1 bg-white dark:bg-gray-700 border border-green-200 dark:border-green-800 rounded text-right text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 font-bold"
+            className="mt-1.5 w-full px-3 py-2 rounded-lg border border-emerald-200 bg-white text-right font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
             placeholder="0"
           />
+          <FieldError message={errors.discount} />
         </div>
-        {errors.discount && (
-          <p className="text-red-500 dark:text-red-400 text-xs mt-1 flex items-center gap-1"><span>⚠</span>{errors.discount}</p>
-        )}
       </div>
 
-      <div className="flex justify-between text-2xl font-bold text-gray-900 dark:text-white border-t dark:border-gray-600 pt-2 mt-2">
-        <span>Total:</span>
-        <span>₹{totals.grand_total.toFixed(2)}</span>
+      <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-200">
+        <span className="text-base font-semibold text-slate-900">Grand total</span>
+        <span className="text-2xl font-bold text-brand-primary tabular-nums">
+          {formatINR(totals.grand_total)}
+        </span>
       </div>
-    </div>
+      <p className="text-xs text-slate-400">
+        Qty total: {totals.totalQty || 0} units
+      </p>
+    </section>
   </div>
 );
 

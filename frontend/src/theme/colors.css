@@ -1,0 +1,108 @@
+/**
+ * Universal color tokens (CSS custom properties).
+ * Imported globally via index.css.
+ * JS chart/constants: see colors.js — keep values in sync.
+ */
+
+:root {
+  /* ── Brand / layout ── */
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-bg-main: #f8fafc;
+  --color-bg-card: #ffffff;
+  --color-text-main: #0f172a;
+  --color-text-muted: #64748b;
+  --color-border-main: #e2e8f0;
+  --color-text-on-primary: #ffffff;
+
+  /* Legacy aliases (used across index.css) */
+  --primary: var(--color-primary);
+  --primary-hover: var(--color-primary-hover);
+  --bg-main: var(--color-bg-main);
+  --bg-card: var(--color-bg-card);
+  --text-main: var(--color-text-main);
+  --text-muted: var(--color-text-muted);
+  --border-main: var(--color-border-main);
+
+  /* ── Slate scale ── */
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+
+  /* ── Gray (charts / tooltips) ── */
+  --color-gray-100: #f3f4f6;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-800: #1f2937;
+
+  /* ── Accent hues ── */
+  --color-indigo-600: #4f46e5;
+  --color-indigo-700: #4338ca;
+  --color-blue-500: #3b82f6;
+  --color-emerald-500: #10b981;
+  --color-green-400: #4ade80;
+  --color-green-500: #22c55e;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-violet-500: #8b5cf6;
+  --color-pink-500: #ec4899;
+  --color-chart-purple: #8884d8;
+
+  /* ── Semantic: invoice status ── */
+  --color-status-paid: #10b981;
+  --color-status-due: #f59e0b;
+  --color-status-overdue: #ef4444;
+  --color-status-paid-chart: #4ade80;
+  --color-status-due-chart: #fbbf24;
+  --color-status-overdue-chart: #f87171;
+
+  /* ── Semantic: feedback ── */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+
+  /* ── Dark mode surfaces (btn-cta-secondary) ── */
+  --color-dark-bg-secondary: #1e293b;
+  --color-dark-bg-secondary-hover: #334155;
+  --color-dark-text: #f8fafc;
+  --color-dark-border: #334155;
+
+  /* ── Print ── */
+  --color-print-ink: #000000;
+  --color-print-paper: #ffffff;
+  --color-print-table-header: #f8fafc;
+  --color-print-report-accent: #4f46e5;
+  --color-print-report-accent-dark: #4338ca;
+  --color-print-report-accent-light: #eef2ff;
+  --color-print-report-table-header: #4338ca;
+
+  /* ── Chart series (ordered) ── */
+  --color-chart-1: #4f46e5;
+  --color-chart-2: #10b981;
+  --color-chart-3: #f59e0b;
+  --color-chart-4: #8b5cf6;
+  --color-chart-5: #ef4444;
+  --color-chart-6: #ec4899;
+
+  /* ── RGBA / shadows ── */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  --shadow-tooltip: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-primary-glow: 0 10px 15px -3px rgba(79, 70, 229, 0.3), 0 4px 6px -2px rgba(79, 70, 229, 0.1);
+  --shadow-primary-glow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --color-cursor-primary: rgba(79, 70, 229, 0.05);
+  --color-cursor-primary-subtle: rgba(79, 70, 229, 0.03);
+  --color-cursor-blue: rgba(37, 99, 235, 0.03);
+}

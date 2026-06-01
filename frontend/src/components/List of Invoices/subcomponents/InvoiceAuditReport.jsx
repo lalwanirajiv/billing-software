@@ -1,62 +1,77 @@
-import React from "react";
+import React from 'react';
+import { colors } from '../../../theme';
+import { formatINR, formatInvoiceDate } from '../invoiceListUtils';
 
-export const InvoiceAuditReport = ({ exportData, formatDate }) => {
-  if (exportData.length === 0) return null;
+export const InvoiceAuditReport = ({ exportData, formatDate = formatInvoiceDate }) => {
+  if (!exportData?.length) return null;
+
+  const totalRevenue = exportData.reduce((sum, i) => sum + (Number(i.grand_total) || 0), 0);
+  const totalTax = exportData.reduce(
+    (sum, i) => sum + (Number(i.cgst) || 0) + (Number(i.sgst) || 0) + (Number(i.igst) || 0),
+    0
+  );
 
   return (
-    <div className="hidden print:block p-12 bg-white text-black min-h-screen">
-      <div className="flex justify-between items-start border-b-[6px] border-slate-900 pb-8 mb-10">
-        <div className="space-y-2">
-          <h1 className="text-5xl font-black uppercase tracking-tighter leading-none">Sales Audit</h1>
-          <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Transaction Summary Report</p>
+    <div className="hidden print:block p-10 bg-white text-black min-h-screen">
+      <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Invoice export</h1>
+          <p className="text-slate-500 text-sm mt-1">Sales transaction summary</p>
         </div>
-        <div className="text-right space-y-1">
-          <p className="font-black text-xs uppercase text-slate-400">Generation Date</p>
-          <p className="font-black text-xl">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+        <div className="text-right">
+          <p className="text-xs font-semibold text-slate-400 uppercase">Generated</p>
+          <p className="font-semibold">
+            {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
         </div>
       </div>
 
-      <table className="w-full border-collapse">
+      <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="bg-slate-50 border-y-2 border-slate-900">
-            <th className="p-4 text-left font-black uppercase text-[10px] tracking-widest border border-slate-200">Bill No</th>
-            <th className="p-4 text-left font-black uppercase text-[10px] tracking-widest border border-slate-200">Date</th>
-            <th className="p-4 text-left font-black uppercase text-[10px] tracking-widest border border-slate-200">Customer Entity</th>
-            <th className="p-4 text-right font-black uppercase text-[10px] tracking-widest border border-slate-200">Revenue (₹)</th>
-            <th className="p-4 text-right font-black uppercase text-[10px] tracking-widest border border-slate-200">GST Breakdown</th>
-            <th className="p-4 text-center font-black uppercase text-[10px] tracking-widest border border-slate-200">Audit Status</th>
+          <tr className="bg-slate-50">
+            <th className="p-3 text-left font-semibold border border-slate-200">Bill</th>
+            <th className="p-3 text-left font-semibold border border-slate-200">Date</th>
+            <th className="p-3 text-left font-semibold border border-slate-200">Customer</th>
+            <th className="p-3 text-right font-semibold border border-slate-200">Amount</th>
+            <th className="p-3 text-right font-semibold border border-slate-200">Tax</th>
+            <th className="p-3 text-center font-semibold border border-slate-200">Status</th>
           </tr>
         </thead>
         <tbody>
           {exportData.map((inv, i) => (
-            <tr key={i} className="border-b border-slate-100 italic-last-row">
-              <td className="p-4 border border-slate-100 font-black text-lg">#{inv.bill_no}</td>
-              <td className="p-4 border border-slate-100 text-sm font-bold text-slate-600 whitespace-nowrap">{formatDate(inv.date)}</td>
-              <td className="p-4 border border-slate-100 text-sm font-black text-slate-900 uppercase">{inv.customer_name || inv.ship_to}</td>
-              <td className="p-4 border border-slate-100 text-right font-black text-lg text-slate-900">₹{inv.grand_total?.toLocaleString()}</td>
-              <td className="p-4 border border-slate-100 text-right text-xs font-bold text-slate-400">₹{(inv.cgst + inv.sgst + inv.igst)?.toLocaleString()}</td>
-              <td className="p-4 border border-slate-100 text-center uppercase text-[10px] font-black">
-                <span className="bg-slate-100 px-3 py-1 rounded-full">{inv.invoice_status}</span>
+            <tr key={i}>
+              <td className="p-3 border border-slate-100 font-medium">#{inv.bill_no}</td>
+              <td className="p-3 border border-slate-100">{formatDate(inv.date)}</td>
+              <td className="p-3 border border-slate-100">{inv.customer_name || inv.ship_to}</td>
+              <td className="p-3 border border-slate-100 text-right font-medium">
+                {formatINR(inv.grand_total)}
+              </td>
+              <td className="p-3 border border-slate-100 text-right text-slate-600">
+                {formatINR((inv.cgst || 0) + (inv.sgst || 0) + (inv.igst || 0))}
+              </td>
+              <td className="p-3 border border-slate-100 text-center text-xs font-medium">
+                {inv.invoice_status}
               </td>
             </tr>
           ))}
         </tbody>
         <tfoot>
-          <tr className="bg-slate-900 text-white font-black border-t-4 border-white">
-            <td colSpan="3" className="p-6 text-right text-xs uppercase tracking-[0.3em]">Total Audit Volume</td>
-            <td className="p-6 text-right text-3xl font-black">₹{exportData.reduce((sum, i) => sum + (i.grand_total || 0), 0).toLocaleString()}</td>
-            <td className="p-6 text-right text-sm">₹{exportData.reduce((sum, i) => sum + ((i.cgst || 0) + (i.sgst || 0) + (i.igst || 0)), 0).toLocaleString()}</td>
-            <td></td>
+          <tr className="bg-slate-900 text-white font-semibold">
+            <td colSpan={3} className="p-4 text-right border border-slate-900">
+              Totals ({exportData.length} invoices)
+            </td>
+            <td className="p-4 text-right border border-slate-900">{formatINR(totalRevenue)}</td>
+            <td className="p-4 text-right border border-slate-900">{formatINR(totalTax)}</td>
+            <td className="border border-slate-900" />
           </tr>
         </tfoot>
       </table>
-      <div className="mt-12 flex justify-between items-center px-4">
-         <div className="space-y-1">
-            <p className="text-[10px] font-black uppercase text-slate-300">Authentication Signature</p>
-            <div className="w-48 h-px bg-slate-200 mt-8"></div>
-         </div>
-         <p className="text-[10px] text-slate-300 italic uppercase tracking-[0.5em]">Digitally Generated Ledger</p>
-      </div>
+
+      <style>{`
+        @media print {
+          th { background: ${colors.print.tableHeaderBg} !important; }
+        }
+      `}</style>
     </div>
   );
 };
