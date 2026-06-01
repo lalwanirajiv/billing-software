@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getCustomerById } from "../../lib/api";
 
 const ShipToDetails = ({ data }) => {
   const [customer, setCustomer] = useState(null);
@@ -7,15 +7,7 @@ const ShipToDetails = ({ data }) => {
   useEffect(() => {
     const getCustomer = async (customer_id) => {
       try {
-        const getCustomerResponse = await fetch(
-          `${API_URL}/api/customer/${customer_id}`
-        );
-        
-        if (!getCustomerResponse.ok) {
-          throw new Error("Failed to fetch customer");
-        }
-
-        const customerData = await getCustomerResponse.json();
+        const customerData = await getCustomerById(customer_id);
         setCustomer(customerData); 
         localStorage.setItem("customer-data",JSON.stringify(customerData));
       } catch (error) {
@@ -29,8 +21,8 @@ const ShipToDetails = ({ data }) => {
   }, [data?.customer_id]);
 
   return (
-    <div className="border border-gray-300 dark:border-gray-600 p-4 rounded-lg flex flex-col space-y-2">
-      <h3 className="font-bold text-lg uppercase text-gray-800 dark:text-gray-200">
+    <div className="border border-gray-300 dark:border-gray-600 p-2 rounded-lg flex flex-col space-y-1">
+      <h3 className="font-bold text-base uppercase text-gray-800 dark:text-gray-200">
         {data.shipTo || customer?.name || "Customer Name"}
       </h3>
       <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">

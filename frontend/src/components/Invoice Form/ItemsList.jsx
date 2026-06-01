@@ -30,7 +30,7 @@ const ItemsList = ({ items, handleItemChange, addItem, removeItem }) => (
               placeholder="Item Name"
               value={item.name}
               onChange={(e) => handleItemChange(index, e)}
-              className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-100"
+              className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <div className="col-span-1 md:col-span-2">
@@ -43,7 +43,7 @@ const ItemsList = ({ items, handleItemChange, addItem, removeItem }) => (
               placeholder="HSN Code"
               value={item.hsn}
               onChange={(e) => handleItemChange(index, e)}
-              className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-100"
+              className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <div className="col-span-1 md:col-span-1">
@@ -56,7 +56,7 @@ const ItemsList = ({ items, handleItemChange, addItem, removeItem }) => (
               placeholder="0"
               value={item.qty}
               onChange={(e) => handleItemChange(index, e)}
-              className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-right text-gray-900 dark:text-gray-100"
+              className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-right text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <div className="col-span-1 md:col-span-2">
@@ -69,7 +69,7 @@ const ItemsList = ({ items, handleItemChange, addItem, removeItem }) => (
               placeholder="0.00"
               value={item.rate}
               onChange={(e) => handleItemChange(index, e)}
-              className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-right text-gray-900 dark:text-gray-100"
+              className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-right text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <div className="col-span-1 md:col-span-2">
@@ -100,7 +100,7 @@ const ItemsList = ({ items, handleItemChange, addItem, removeItem }) => (
     <button
       type="button"
       onClick={addItem}
-      className="mt-4 px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition-colors"
+      className="mt-4 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition-colors"
     >
       + Add Item
     </button>

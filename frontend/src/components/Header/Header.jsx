@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
-import { SunIcon, MoonIcon, MenuIcon, CloseIcon } from "../Reusables/Icons";
+import { Link, useNavigate } from "react-router-dom";
+import { MenuIcon, CloseIcon } from "../Reusables/Icons";
+import { FileText } from "lucide-react";
 
-const Header = ({ toggleTheme, theme }) => {
+const Header = () => {
+  const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isInvoiceMenuOpen, setInvoiceMenuOpen] = useState(false);
   const [isCustomerMenuOpen, setCustomerMenuOpen] = useState(false);
@@ -32,7 +34,7 @@ const Header = ({ toggleTheme, theme }) => {
 
   const navLinkClasses = `
     text-gray-600 dark:text-gray-300 
-    hover:text-blue-600 dark:hover:text-blue-400 
+    hover:text-indigo-600 dark:hover:text-indigo-400 
     font-medium transition-colors 
     cursor-pointer select-none
   `;
@@ -41,27 +43,15 @@ const Header = ({ toggleTheme, theme }) => {
     "block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700";
 
   return (
-    <div className="no-print">
-    <header className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50">
+    <header className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50 no-print">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
             <Link to="/" className="flex items-center space-x-2">
-              <svg
-                className="w-8 h-8 text-blue-600 dark:text-blue-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6a2 2 0 100-4 2 2 0 000 4zm0 12a2 2 0 100-4 2 2 0 000 4z"
-                ></path>
-              </svg>
+              <div className="bg-indigo-600 p-1.5 rounded-lg flex items-center justify-center">
+                <FileText className="text-white w-5 h-5" />
+              </div>
               <span className="text-xl font-bold text-gray-800 dark:text-gray-200">
                 BillingApp
               </span>
@@ -117,25 +107,13 @@ const Header = ({ toggleTheme, theme }) => {
             <Link to="/reports" className={navLinkClasses}>
               Reports
             </Link>
+            <Link to="/settings" className={navLinkClasses}>
+              Settings
+            </Link>
           </div>
 
-          {/* Theme Toggle + Mobile Menu */}
-          <div className="flex items-center space-x-2">
-            {/* Theme Toggle */}
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={toggleTheme}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") toggleTheme();
-              }}
-              className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 cursor-pointer transition-colors inline-flex items-center justify-center"
-              aria-label="Toggle theme"
-            >
-              {theme === "light" ? <MoonIcon /> : <SunIcon />}
-            </span>
-
-            {/* Mobile hamburger */}
+          {/* Mobile hamburger */}
+          <div className="flex items-center">
             <span
               role="button"
               tabIndex={0}
@@ -145,7 +123,7 @@ const Header = ({ toggleTheme, theme }) => {
                   setIsMobileMenuOpen(!isMobileMenuOpen);
                 }
               }}
-              className="p-2 rounded-full text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors shadow-sm cursor-pointer inline-flex items-center justify-center md:hidden"
+              className="p-2 rounded-full text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm cursor-pointer inline-flex items-center justify-center md:hidden"
               aria-label="Toggle mobile menu"
             >
               {isMobileMenuOpen ? (
@@ -162,7 +140,7 @@ const Header = ({ toggleTheme, theme }) => {
           <div className="md:hidden pt-2 pb-4 space-y-1">
             <Link
               to="/dashboard"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
               Dashboard
             </Link>
@@ -172,13 +150,13 @@ const Header = ({ toggleTheme, theme }) => {
             </h3>
             <Link
               to="/invoice-form"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
               Create Invoice
             </Link>
             <Link
               to="/invoices"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
               View All Invoices
             </Link>
@@ -188,28 +166,33 @@ const Header = ({ toggleTheme, theme }) => {
             </h3>
             <Link
               to="/create-customer"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
               Create Customer
             </Link>
             <Link
               to="/customers"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
               View All Customers
             </Link>
 
             <Link
               to="/reports"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
               Reports
+            </Link>
+            <Link
+              to="/settings"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
+            >
+              Settings
             </Link>
           </div>
         )}
       </nav>
     </header>
-    </div>
   );
 };
 

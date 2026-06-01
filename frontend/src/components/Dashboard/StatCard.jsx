@@ -2,16 +2,21 @@
 import React from "react";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 
-const StatCard = ({ title, value, icon: Icon, change, changeType }) => {
+const StatCard = ({ title, value, icon: Icon, change, changeType, onClick }) => {
   const isPositive = changeType === "positive";
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex flex-col justify-between">
+    <div 
+      onClick={onClick}
+      className={`bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md flex flex-col justify-between ${onClick ? "cursor-pointer hover:shadow-lg transition-all transform hover:-translate-y-1" : ""}`}
+    >
       <div className="flex justify-between items-start">
         <span className="text-gray-500 dark:text-gray-400 font-medium">
           {title}
         </span>
-        {Icon && <Icon className="h-6 w-6 text-gray-400" />}
+        <div className="bg-indigo-50 dark:bg-indigo-900/10 p-2.5 rounded-xl group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/20 transition-all">
+          {Icon && <Icon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
+        </div>
       </div>
 
       <div>

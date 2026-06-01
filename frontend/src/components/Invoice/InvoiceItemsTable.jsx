@@ -1,7 +1,7 @@
 import React from "react";
 
 const InvoiceItemsTable = ({ data }) => {
-  const MIN_ROWS = 15;
+  const MIN_ROWS = 11;
   const items = data.items || [];
   const emptyRowsCount = Math.max(0, MIN_ROWS - items.length);
 
@@ -79,22 +79,22 @@ const InvoiceItemsTable = ({ data }) => {
                     : "bg-gray-50 dark:bg-gray-700/50"
                 }
               >
-                <td className="border border-gray-300 dark:border-gray-600 p-1 text-center">
+                <td className="border border-gray-300 dark:border-gray-600 p-1 text-center h-[34px] align-middle">
                   {index + 1}
                 </td>
-                <td className="border border-gray-300 dark:border-gray-600 p-1 text-center">
+                <td className="border border-gray-300 dark:border-gray-600 p-1 text-center h-[34px] align-middle uppercase">
                   {name}
                 </td>
-                <td className="border border-gray-300 dark:border-gray-600 p-1 text-center">
+                <td className="border border-gray-300 dark:border-gray-600 p-1 text-center h-[34px] align-middle">
                   {hsn}
                 </td>
-                <td className="border border-gray-300 dark:border-gray-600 p-1 text-center">
+                <td className="border border-gray-300 dark:border-gray-600 p-1 text-center h-[34px] align-middle">
                   {qty}
                 </td>
-                <td className="border border-gray-300 dark:border-gray-600 p-1 text-center">
+                <td className="border border-gray-300 dark:border-gray-600 p-1 text-center h-[34px] align-middle">
                   {rate}
                 </td>
-                <td className="border border-gray-300 dark:border-gray-600 p-1 text-center">
+                <td className="border border-gray-300 dark:border-gray-600 p-1 text-center h-[34px] align-middle">
                   {amount}
                 </td>
               </tr>

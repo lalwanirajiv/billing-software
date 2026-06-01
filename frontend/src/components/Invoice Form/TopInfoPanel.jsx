@@ -9,6 +9,7 @@ const TopInfoPanel = ({
   setIsSuggestionsVisible,
   isLoadingCustomers,
   filteredCustomers,
+  errors = {},
 }) => (
   <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
     {/* Customer Details */}
@@ -32,7 +33,7 @@ const TopInfoPanel = ({
             onChange={handleChange}
             onFocus={() => setIsSuggestionsVisible(true)}
             onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 150)}
-            className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+            className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
             disabled={isLoadingCustomers}
             autoComplete="off"
             placeholder={
@@ -66,7 +67,7 @@ const TopInfoPanel = ({
               >
                 <a
                   href="/create-customer"
-                  className="text-blue-600 dark:text-blue-400 hover:underline text-sm font-semibold"
+                  className="text-indigo-600 dark:text-indigo-400 hover:underline text-sm font-semibold"
                 >
                   + Add New Customer
                 </a>
@@ -75,6 +76,9 @@ const TopInfoPanel = ({
           )}
         </div>
       </div>
+      {errors.shipTo && (
+        <p className="text-red-500 dark:text-red-400 text-xs mt-1 flex items-center gap-1"><span>⚠</span>{errors.shipTo}</p>
+      )}
       {/* Address Line 1 */}
       <div>
         <label
@@ -150,8 +154,13 @@ const TopInfoPanel = ({
           placeholder="e.g., INV-001"
           value={formData.billNo}
           onChange={handleChange}
-          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+          className={`w-full p-2 bg-white dark:bg-gray-700 border rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 ${
+            errors.billNo ? "border-red-500 dark:border-red-500" : "border-gray-300 dark:border-gray-600"
+          }`}
         />
+        {errors.billNo && (
+          <p className="text-red-500 dark:text-red-400 text-xs mt-1 flex items-center gap-1"><span>⚠</span>{errors.billNo}</p>
+        )}
       </div>
       <div>
         <label
@@ -166,8 +175,13 @@ const TopInfoPanel = ({
           name="date"
           value={formData.date || ""}
           onChange={handleChange}
-          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 [color-scheme:light] dark:[color-scheme:dark]"
+          className={`w-full p-2 bg-white dark:bg-gray-700 border rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 [color-scheme:light] dark:[color-scheme:dark] ${
+            errors.date ? "border-red-500 dark:border-red-500" : "border-gray-300 dark:border-gray-600"
+          }`}
         />
+        {errors.date && (
+          <p className="text-red-500 dark:text-red-400 text-xs mt-1 flex items-center gap-1"><span>⚠</span>{errors.date}</p>
+        )}
       </div>
       <div>
         <label
@@ -183,7 +197,7 @@ const TopInfoPanel = ({
           placeholder="e.g., Net 30 Days"
           value={formData.terms || "30 Days"}
           onChange={handleChange}
-          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
         />
       </div>
       <div>
@@ -198,7 +212,7 @@ const TopInfoPanel = ({
           name="state"
           value={formData.state}
           onChange={handleChange}
-          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+          className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
         >
           <option value="State">State</option>
           <option value="Interstate">Interstate</option>
@@ -247,6 +261,21 @@ const TopInfoPanel = ({
             ₹{totals.adjustment.toFixed(2)}
           </span>
         </div>
+
+        <div className="flex justify-between items-center bg-green-50 dark:bg-green-900/20 p-2 rounded-md border border-green-100 dark:border-green-800/30">
+          <span className="text-green-700 dark:text-green-400 font-bold uppercase text-xs tracking-wider">Discount (₹):</span>
+          <input
+            type="number"
+            name="discount"
+            value={formData.discount}
+            onChange={handleChange}
+            className="w-24 p-1 bg-white dark:bg-gray-700 border border-green-200 dark:border-green-800 rounded text-right text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 font-bold"
+            placeholder="0"
+          />
+        </div>
+        {errors.discount && (
+          <p className="text-red-500 dark:text-red-400 text-xs mt-1 flex items-center gap-1"><span>⚠</span>{errors.discount}</p>
+        )}
       </div>
 
       <div className="flex justify-between text-2xl font-bold text-gray-900 dark:text-white border-t dark:border-gray-600 pt-2 mt-2">

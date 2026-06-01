@@ -1,60 +1,35 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  DeleteIcon,
-  AlertTriangleIcon,
-  EditIcon,
-  SearchIcon,
-} from "../Reusables/Icons";
-import { Calendar } from "lucide-react"; // ✅ custom calendar icon
+import { useNavigate, useLocation } from "react-router-dom";
 import { Toast } from "../Reusables/Toast";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getAllInvoices, deleteInvoice, deleteInvoicesBulk, getDetailedInvoicesByDate } from "../../lib/api";
 
-const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, billNo }) => {
-  if (!isOpen) return null;
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-      role="dialog"
-    >
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 m-4 max-w-md w-full">
-        <div className="flex flex-col items-center text-center">
-          <AlertTriangleIcon />
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-4">
-            Confirm Deletion
-          </h2>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Are you sure you want to delete Invoice number: {billNo}? This
-            action cannot be undone.
-          </p>
-        </div>
-        <div className="mt-8 flex justify-center space-x-4">
-          <button onClick={onClose} className="px-6 py-2 border rounded-md">
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-6 py-2 bg-red-600 text-white rounded-md"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+// Sub-components
+import { InvoiceListHeader } from "./subcomponents/InvoiceListHeader";
+import { InvoiceTable } from "./subcomponents/InvoiceTable";
+import { ExportModal } from "./subcomponents/ExportModal";
+import { DeleteInvoiceModal } from "./subcomponents/DeleteInvoiceModal";
+import { InvoiceAuditReport } from "./subcomponents/InvoiceAuditReport";
+import { BackButton } from "../Reusables/BackButton";
 
 export default function InvoiceList() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [invoices, setInvoices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [filteredInvoices, setFilteredInvoices] = useState([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
-  const [toastMessage, setToastMessage] = useState("");
+  const [toast, setToast] = useState({ message: "", type: "info" });
+  const [selectedInvoices, setSelectedInvoices] = useState([]);
+  const [isBulkDelete, setIsBulkDelete] = useState(false);
+  
+  // Export states
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportData, setExportData] = useState([]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -66,11 +41,22 @@ export default function InvoiceList() {
   };
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const statusParam = params.get("status");
+    if (statusParam) {
+      const validStatuses = ["Paid", "Due", "Overdue"];
+      // Normalize to Title Case for matching the component state
+      const normalizedStatus = statusParam.charAt(0).toUpperCase() + statusParam.slice(1).toLowerCase();
+      if (validStatuses.includes(normalizedStatus)) {
+        setStatusFilter(normalizedStatus);
+      }
+    }
+  }, [location.search]);
+
+  useEffect(() => {
     const fetchInvoices = async () => {
       try {
-        const res = await fetch(API_URL+"/api/invoices");
-        if (!res.ok) throw new Error("Failed to fetch data.");
-        const invoicesData = await res.json();
+        const invoicesData = await getAllInvoices();
         setInvoices(invoicesData);
         setFilteredInvoices(invoicesData);
       } catch (err) {
@@ -93,17 +79,21 @@ export default function InvoiceList() {
       const dateFilterMatch = dateFilter
         ? invoice.date && invoice.date.startsWith(dateFilter)
         : true;
-      return searchTermMatch && dateFilterMatch;
+      const statusFilterMatch =
+        statusFilter === "All" ||
+        (invoice.invoice_status &&
+          invoice.invoice_status.toLowerCase() === statusFilter.toLowerCase());
+      return searchTermMatch && dateFilterMatch && statusFilterMatch;
     });
     setFilteredInvoices(results);
-  }, [searchTerm, dateFilter, invoices]);
+  }, [searchTerm, dateFilter, statusFilter, invoices]);
 
   useEffect(() => {
-    if (toastMessage) {
-      const timer = setTimeout(() => setToastMessage(""), 3000);
+    if (toast.message) {
+      const timer = setTimeout(() => setToast({ message: "", type: "info" }), 3000);
       return () => clearTimeout(timer);
     }
-  }, [toastMessage]);
+  }, [toast.message]);
 
   const handleRowClick = (invoiceId) => {
     navigate(`/invoice/${invoiceId}`);
@@ -115,29 +105,149 @@ export default function InvoiceList() {
     setIsDeleteModalOpen(true);
   };
 
+  const handleEditClick = (e, invoiceId) => {
+    e.stopPropagation();
+    navigate(`/invoice-form/${invoiceId}`);
+  };
+
   const handleCloseModal = () => {
     setIsDeleteModalOpen(false);
     setInvoiceToDelete(null);
+    setIsBulkDelete(false);
   };
 
   const handleConfirmDelete = async () => {
+    if (isBulkDelete) {
+      if (selectedInvoices.length === 0) return;
+      try {
+        await deleteInvoicesBulk(selectedInvoices);
+        setInvoices(invoices.filter((i) => !selectedInvoices.includes(i.invoice_id)));
+        setToast({
+          message: `${selectedInvoices.length} invoices were deleted successfully.`,
+          type: "success"
+        });
+        setSelectedInvoices([]);
+      } catch (err) {
+        setToast({ message: "Error: Failed to delete invoices.", type: "error" });
+      } finally {
+        handleCloseModal();
+      }
+      return;
+    }
+
     if (!invoiceToDelete) return;
     try {
-      const response = await fetch(
-        `${API_URL}/api/invoices/${invoiceToDelete.invoice_id}`,
-        { method: "DELETE" }
-      );
-      if (!response.ok) throw new Error("Failed to delete invoice");
-      setInvoices(
-        invoices.filter((i) => i.invoice_id !== invoiceToDelete.invoice_id)
-      );
-      setToastMessage(
-        `Invoice #${invoiceToDelete.bill_no} was deleted successfully.`
-      );
+      await deleteInvoice(invoiceToDelete.invoice_id);
+      setInvoices(invoices.filter((i) => i.invoice_id !== invoiceToDelete.invoice_id));
+      setSelectedInvoices(prev => prev.filter(id => id !== invoiceToDelete.invoice_id));
+      setToast({
+        message: `Invoice #${invoiceToDelete.bill_no} was deleted successfully.`,
+        type: "success"
+      });
     } catch (err) {
-      setToastMessage("Error: Failed to delete invoice.");
+      setToast({ message: "Error: Failed to delete invoice.", type: "error" });
     } finally {
       handleCloseModal();
+    }
+  };
+
+  const handleToggleSelect = (invoiceId) => {
+    setSelectedInvoices(prev => 
+      prev.includes(invoiceId) 
+        ? prev.filter(id => id !== invoiceId) 
+        : [...prev, invoiceId]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedInvoices.length === filteredInvoices.length && filteredInvoices.length > 0) {
+      setSelectedInvoices([]);
+    } else {
+      setSelectedInvoices(filteredInvoices.map(i => i.invoice_id));
+    }
+  };
+
+  const handleBulkDeleteClick = () => {
+    if (selectedInvoices.length > 0) {
+      setIsBulkDelete(true);
+      setIsDeleteModalOpen(true);
+    }
+  };
+
+  const handleExportCSV = async (start, end) => {
+    try {
+      setToast({ message: "Preparing CSV export...", type: "info" });
+      const { data } = await getDetailedInvoicesByDate(start, end);
+      if (data.length === 0) {
+        setToast({ message: "No invoices found for the selected range.", type: "error" });
+        return;
+      }
+
+      // Sort by Bill Number
+      data.sort((a, b) => {
+        const numA = parseFloat(a.bill_no) || 0;
+        const numB = parseFloat(b.bill_no) || 0;
+        return numA - numB;
+      });
+
+      const headers = ["Bill No", "Date", "Customer", "GSTIN", "Terms", "Subtotal", "CGST", "SGST", "IGST", "Grand Total", "Status"];
+      const csvRows = [headers.join(",")];
+
+      data.forEach(inv => {
+        const row = [
+          inv.bill_no,
+          inv.date || "N/A",
+          `"${inv.customer_name || inv.ship_to}"`,
+          inv.customer_gstin || "N/A",
+          `"${inv.terms_of_payment || ""}"`,
+          inv.sub_total || 0,
+          inv.cgst || 0,
+          inv.sgst || 0,
+          inv.igst || 0,
+          inv.grand_total || 0,
+          inv.invoice_status || "Due"
+        ];
+        csvRows.push(row.join(","));
+      });
+
+      const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Invoices_Export_${start || "All"}_to_${end || "Now"}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setToast({ message: "CSV exported successfully!", type: "success" });
+      setIsExportModalOpen(false);
+    } catch (err) {
+      setToast({ message: "Failed to export CSV.", type: "error" });
+    }
+  };
+
+  const handleExportPDF = async (start, end) => {
+    try {
+      setToast({ message: "Generating PDF preview...", type: "info" });
+      const { data } = await getDetailedInvoicesByDate(start, end);
+      if (data.length === 0) {
+        setToast({ message: "No invoices found for the selected range.", type: "error" });
+        return;
+      }
+      setExportData(data.sort((a, b) => {
+        const numA = parseFloat(a.bill_no) || 0;
+        const numB = parseFloat(b.bill_no) || 0;
+        return numA - numB;
+      }));
+      setIsExportModalOpen(false);
+      // Wait for React to render the hidden print section
+      setTimeout(() => {
+        window.print();
+        setExportData([]); // Clear after printing
+      }, 500);
+    } catch (err) {
+      setToast({ message: "Failed to generate PDF.", type: "error" });
     }
   };
 
@@ -148,196 +258,66 @@ export default function InvoiceList() {
 
   return (
     <div className="bg-gray-100 dark:bg-slate-900 min-h-screen">
-      <Toast message={toastMessage} onClose={() => setToastMessage("")} />
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            All Invoices
-          </h1>
-          <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-            {/* ✅ Custom calendar icon for date filter */}
-            <div className="relative">
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="pl-10 pr-4 py-2 border rounded-lg bg-white dark:bg-gray-800 
-               text-gray-900 dark:text-gray-100 
-               border-gray-300 dark:border-gray-600 
-               focus:ring-2 focus:ring-blue-500 
-               appearance-none 
-               [&::-webkit-calendar-picker-indicator]:opacity-0 
-               [&::-webkit-calendar-picker-indicator]:absolute 
-               [&::-webkit-calendar-picker-indicator]:inset-0 
-               [&::-webkit-calendar-picker-indicator]:w-full 
-               [&::-webkit-calendar-picker-indicator]:h-full 
-               [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-              />
-              <Calendar
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 
-               text-gray-500 dark:text-gray-400 pointer-events-none"
-                size={18}
-              />
-            </div>
+      <div className="no-print">
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast({ message: "", type: "info" })} 
+        />
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+          <BackButton />
+          <InvoiceListHeader 
+            dateFilter={dateFilter}
+            setDateFilter={setDateFilter}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            onExportClick={() => setIsExportModalOpen(true)}
+            selectedCount={selectedInvoices.length}
+            onBulkDelete={handleBulkDeleteClick}
+          />
 
-            {/* Search bar */}
-            <div className="relative w-full sm:w-64">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <SearchIcon />
-              </div>
-              <input
-                type="text"
-                placeholder="Search invoices..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white dark:bg-gray-800 
-                           text-gray-900 dark:text-gray-100 
-                           border-gray-300 dark:border-gray-600 
-                           focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Add Invoice */}
-            <Link
-              to="/invoice-form"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-center hover:bg-blue-700"
-            >
-              Add New Invoice
-            </Link>
-          </div>
+          <InvoiceTable 
+            filteredInvoices={filteredInvoices}
+            allInvoices={invoices}
+            formatDate={formatDate}
+            onRowClick={handleRowClick}
+            onEditClick={handleEditClick}
+            onDeleteClick={handleDeleteClick}
+            searchTerm={searchTerm}
+            dateFilter={dateFilter}
+            selectedInvoices={selectedInvoices}
+            onToggleSelect={handleToggleSelect}
+            onToggleSelectAll={handleToggleSelectAll}
+          />
         </div>
 
-        {/* Invoice Table */}
-        {filteredInvoices.length === 0 ? (
-          <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-lg shadow">
-            <h2 className="text-xl font-medium text-gray-800 dark:text-gray-200">
-              No Invoices Found
-            </h2>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
-              {searchTerm || dateFilter
-                ? `Your search did not return any results.`
-                : "Want to add one? "}
-              {!(searchTerm || dateFilter) && (
-                <Link
-                  to="/invoice-form"
-                  className="text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  Create a new invoice
-                </Link>
-              )}
-            </p>
-          </div>
-        ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
-            <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700/50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
-                    S.No.
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
-                    Customer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
-                    Bill No.
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
-                    Bill Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500 dark:text-gray-300">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredInvoices.map((invoice) => (
-                  <tr
-                    key={invoice.invoice_id}
-                    onClick={() => handleRowClick(invoice.invoice_id)}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
-                  >
-                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                      {invoices.findIndex(
-                        (i) => i.invoice_id === invoice.invoice_id
-                      ) + 1}
-                    </td>
-                    <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100">
-                      {invoice.ship_to}
-                    </td>
-                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                      {invoice.bill_no}
-                    </td>
-                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                      {formatDate(invoice.date)}
-                    </td>
-                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                      ₹{Number(invoice.grand_total).toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 font-medium">
-                      {invoice.invoice_status ? (
-                        <span
-                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border
-        ${
-          invoice.invoice_status.toLowerCase() === "paid"
-            ? "text-green-700 bg-green-50 border-green-200 dark:text-green-300 dark:bg-green-900/30 dark:border-green-700"
-            : invoice.invoice_status.toLowerCase() === "due"
-            ? "text-yellow-700 bg-yellow-50 border-yellow-200 dark:text-yellow-300 dark:bg-yellow-900/30 dark:border-yellow-700"
-            : invoice.invoice_status.toLowerCase() === "overdue"
-            ? "text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-900/30 dark:border-red-700"
-            : "text-gray-700 bg-gray-50 border-gray-200 dark:text-gray-300 dark:bg-gray-700/30 dark:border-gray-600"
-        }`}
-                        >
-                          {invoice.invoice_status}
-                        </span>
-                      ) : (
-                        "N/A"
-                      )}
-                    </td>
+        <DeleteInvoiceModal 
+          isOpen={isDeleteModalOpen}
+          onClose={handleCloseModal}
+          onConfirm={handleConfirmDelete}
+          billNo={isBulkDelete ? `${selectedInvoices.length} selected` : invoiceToDelete?.bill_no}
+          isBulk={isBulkDelete}
+        />
 
-                    {/* ✅ Edit/Delete as spans */}
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRowClick(invoice.invoice_id);
-                          }}
-                          role="button"
-                          className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:border-blue-500 transition"
-                          title="Edit Invoice"
-                        >
-                          <EditIcon className="w-4 h-4" />
-                        </span>
-
-                        <span
-                          onClick={(e) => handleDeleteClick(e, invoice)}
-                          role="button"
-                          className="cursor-pointer p-2 rounded-md border border-gray-300 text-gray-600 hover:text-red-600 hover:border-red-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-red-400 dark:hover:border-red-500 transition"
-                          title="Delete Invoice"
-                        >
-                          <DeleteIcon className="w-4 h-4" />
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <ExportModal 
+          isOpen={isExportModalOpen} 
+          onClose={() => setIsExportModalOpen(false)} 
+          onExportCSV={handleExportCSV}
+          onExportPDF={handleExportPDF}
+        />
       </div>
-      <DeleteConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={handleCloseModal}
-        onConfirm={handleConfirmDelete}
-        billNo={invoiceToDelete?.bill_no}
-      />
+
+      <InvoiceAuditReport exportData={exportData} formatDate={formatDate} />
+
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white !important; }
+          @page { margin: 2cm; }
+        }
+      `}</style>
     </div>
   );
 }

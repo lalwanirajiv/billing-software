@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
-const API_URL = import.meta.env.VITE_API_URL;
+import { getRecentInvoices } from "../../lib/api";
 
 const RecentInvoices = () => {
   const [invoices, setInvoices] = useState([]);
@@ -11,9 +10,7 @@ const RecentInvoices = () => {
   useEffect(() => {
     const fetchInvoices = async () => {
       try {
-        const res = await axios.get(
-          API_URL+"/api/invoices/recent"
-        );
+        const res = await getRecentInvoices();
         setInvoices(res.data || []); // Use raw array
       } catch (err) {
         setError(err.message || "Failed to fetch invoices");
@@ -41,7 +38,7 @@ const RecentInvoices = () => {
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
           Recent Invoices

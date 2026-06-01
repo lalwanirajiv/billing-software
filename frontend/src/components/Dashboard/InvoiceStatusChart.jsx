@@ -1,6 +1,6 @@
 // InvoiceStatusChart.jsx
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { getInvoiceStatusCounts } from "../../lib/api";
 import {
   Tooltip,
   Legend,
@@ -11,7 +11,6 @@ import {
 } from "recharts";
 
 const COLORS = ["#4ade80", "#f87171", "#fbbf24"]; // Paid: green, Overdue: red, Due: amber
-const API_URL = import.meta.env.VITE_API_URL;
 
 const InvoiceStatusChart = () => {
   const [data, setData] = useState([]);
@@ -21,9 +20,7 @@ const InvoiceStatusChart = () => {
   useEffect(() => {
     const fetchInvoiceStatus = async () => {
       try {
-        const res = await axios.get(
-          API_URL+"/api/stats/invoice-status"
-        );
+        const res = await getInvoiceStatusCounts();
         // API already returns [{ name, value }]
         setData(res.data);
       } catch (err) {
@@ -39,7 +36,7 @@ const InvoiceStatusChart = () => {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Invoice Status
         </h3>
@@ -50,7 +47,7 @@ const InvoiceStatusChart = () => {
 
   if (error) {
     return (
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Invoice Status
         </h3>
@@ -61,7 +58,7 @@ const InvoiceStatusChart = () => {
 
   if (!data.length) {
     return (
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Invoice Status
         </h3>
@@ -71,7 +68,7 @@ const InvoiceStatusChart = () => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         Invoice Status
       </h3>
@@ -93,7 +90,16 @@ const InvoiceStatusChart = () => {
               />
             ))}
           </Pie>
-          <Tooltip />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "#1f2937",
+              border: "none",
+              borderRadius: "12px",
+              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+            }}
+            itemStyle={{ color: "#f3f4f6", fontSize: "14px", fontWeight: "900" }}
+            labelStyle={{ color: "#9ca3af", marginBottom: "4px", fontSize: "12px", fontWeight: "900", textTransform: "uppercase" }}
+          />
           <Legend />
         </PieChart>
       </ResponsiveContainer>

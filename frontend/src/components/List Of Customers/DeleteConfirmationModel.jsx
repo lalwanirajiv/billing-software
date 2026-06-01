@@ -4,6 +4,7 @@ export const DeleteConfirmationModal = ({
   onClose,
   onConfirm,
   customerName,
+  isBulk
 }) => {
   if (!isOpen) return null;
 
@@ -20,8 +21,10 @@ export const DeleteConfirmationModal = ({
             Are you sure?
           </h2>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Do you really want to delete the customer "{customerName}"? This
-            action cannot be undone.
+            {isBulk 
+              ? `Do you really want to delete ${customerName} customers? This action cannot be undone.`
+              : `Do you really want to delete the customer "${customerName}"? This action cannot be undone.`
+            }
           </p>
         </div>
         <div className="mt-8 flex justify-center space-x-4">

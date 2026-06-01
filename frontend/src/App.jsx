@@ -1,6 +1,6 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { useState, useEffect } from "react";
-
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { initDatabase } from "./lib/initDatabase";
 import Home from "./components/Dashboard/Dashboard";
 import Invoice from "./components/Invoice/Invoice";
 import InvoiceForm from "./components/Invoice Form/InvoiceForm";
@@ -11,49 +11,85 @@ import Header from "./components/Header/Header";
 
 import { ToastProvider } from "./context/ToastContext"; // ✅ global toast
 import Reports from "./components/Reports/Reports";
+import CustomerAccount from "./components/List Of Customers/CustomerAccount";
+import Footer from "./components/Footer/Footer";
+import Settings from "./components/Settings/Settings";
+
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+
+function TitleUpdater() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const path = location.pathname;
+    let title = "Dashboard";
+
+    if (path === "/") title = "Dashboard";
+    else if (path.startsWith("/invoice/")) title = "View Invoice";
+    else if (path === "/invoice-form") title = "Create Invoice";
+    else if (path.startsWith("/invoice-form/")) title = "Edit Invoice";
+    else if (path === "/create-customer") title = "Add Customer";
+    else if (path.startsWith("/edit-customer/")) title = "Edit Customer";
+    else if (path === "/customers") title = "Customer List";
+    else if (path === "/invoices") title = "Invoice List";
+    else if (path === "/reports") title = "Reports";
+    else if (path.startsWith("/customer/")) title = "Customer Account";
+
+    const fullTitle = `${title} | My Billing Software`;
+    document.title = fullTitle;
+
+    // Tauri-specific window title update
+    try {
+      const appWindow = getCurrentWebviewWindow();
+      if (appWindow) {
+        appWindow.setTitle(fullTitle).catch(err => console.error("Tauri title update failed:", err));
+      }
+    } catch (e) {
+      // Not running in Tauri or API not available
+    }
+  }, [location]);
+
+  return null;
+}
 
 function App() {
-  const [theme, setTheme] = useState(() => {
-    const storedTheme = sessionStorage.getItem("theme");
-    if (storedTheme) return storedTheme;
-
-    if (
-      window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches
-    ) {
-      return "dark";
-    }
-
-    return "light";
-  });
-
-  // Apply theme to <html> and save to sessionStorage
+  // Initialize SQLite database
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    sessionStorage.setItem("theme", theme);
-  }, [theme]);
-
-  // Toggle theme between light and dark
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  };
+    async function setupDB() {
+      try {
+        await initDatabase();
+        console.log("Database initialized");
+      } catch (error) {
+        console.error("Database init failed:", error);
+      }
+    }
+    setupDB();
+  }, []);
 
   return (
     <Router>
+      <TitleUpdater />
       <ToastProvider>
-        <Header toggleTheme={toggleTheme} theme={theme} />
-
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/invoice" element={<Invoice />} />
-          <Route path="/invoice/:id" element={<Invoice />} />
-          <Route path="/invoice-form" element={<InvoiceForm />} />
-          <Route path="/invoice-form/:id" element={<InvoiceForm />} />
-          <Route path="/create-customer" element={<CustomerForm />} />
-          <Route path="/customers" element={<CustomerList />} />
-          <Route path="/invoices" element={<InvoiceList />} />
-          <Route path="/reports" element={<Reports />} />
-        </Routes>
+        <div className="flex flex-col min-h-screen">
+          <Header />
+          <main className="flex-grow">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/invoice" element={<Invoice />} />
+              <Route path="/invoice/:id" element={<Invoice />} />
+              <Route path="/invoice-form" element={<InvoiceForm />} />
+              <Route path="/invoice-form/:id" element={<InvoiceForm />} />
+              <Route path="/create-customer" element={<CustomerForm />} />
+              <Route path="/edit-customer/:id" element={<CustomerForm />} />
+              <Route path="/customers" element={<CustomerList />} />
+              <Route path="/invoices" element={<InvoiceList />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/customer/:id" element={<CustomerAccount />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
       </ToastProvider>
     </Router>
   );

@@ -33,6 +33,12 @@ const InvoiceTotals = ({ data }) => {
             <td className="font-semibold p-2">IGST @5%</td>
             <td className="p-2 text-right">₹{igst.toFixed(2)}</td>
           </tr>
+          {data.discount > 0 && (
+            <tr className="border-t border-l border-r border-gray-300 dark:border-gray-600 bg-green-50/50 dark:bg-green-900/10">
+              <td className="font-semibold p-2 text-green-700 dark:text-green-400">DISCOUNT (-)</td>
+              <td className="p-2 text-right text-green-700 dark:text-green-400">- ₹{Number(data.discount).toFixed(2)}</td>
+            </tr>
+          )}
           <tr className="border-t border-l border-r border-gray-300 dark:border-gray-600">
             <td className="font-semibold p-2">ADJUSTMENT</td>
             <td className="p-2 text-right">₹{adjustment.toFixed(2)}</td>
@@ -46,7 +52,7 @@ const InvoiceTotals = ({ data }) => {
         </tbody>
       </table>
 
-      <div className="border border-gray-300 dark:border-gray-600 p-3 rounded-md mt-4 text-center min-h-[100px] flex flex-col justify-end">
+      <div className="border border-gray-300 dark:border-gray-600 p-2 rounded-md mt-2 text-center min-h-[50px] flex flex-col justify-end">
         <p className="font-bold">SIGN</p>
       </div>
     </div>

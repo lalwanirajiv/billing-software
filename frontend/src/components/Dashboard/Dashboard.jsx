@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { DollarSign, Users, Clock, FileText } from "lucide-react";
 import StatCard from "./StatCard";
+import StatusCarousel from "./StatusCarousel";
+import AmountCarousel from "./AmountCarousel";
 import TopCustomers from "./TopCustomers";
 import InvoiceStatusChart from "./InvoiceStatusChart";
 import RevenueChart from "./RevenueChart";
 import RecentInvoices from "./RecentInvoices";
-import axios from "axios";
-const API_URL = import.meta.env.VITE_API_URL;
+import TopItemsChart from "./TopItemsChart";
+import TransactionsChart from "./TransactionsChart";
+import { getDashboardStats } from "../../lib/api";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [topCustomers, setTopCustomers] = useState([]);
   const [recentInvoices, setRecentInvoices] = useState([]);
@@ -19,7 +23,7 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const res = await axios.get(API_URL+"/api/stats");
+        const res = await getDashboardStats();
         setStats(res.data);
       } catch (err) {
         setError(err.message);
@@ -59,15 +63,17 @@ export default function Dashboard() {
           <div className="flex items-center gap-4 mt-4 sm:mt-0">
             <Link
               to="/invoice-form"
-              className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+              className="btn-cta-primary"
             >
-              Create Invoice
+              <FileText size={20} />
+              <span>Create Invoice</span>
             </Link>
             <Link
               to="/create-customer"
-              className="px-4 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors border border-gray-300 dark:border-gray-600"
+              className="btn-cta-secondary"
             >
-              Add Customer
+              <Users size={20} />
+              <span>Add Customer</span>
             </Link>
           </div>
         </div>
@@ -81,32 +87,18 @@ export default function Dashboard() {
             change={`${stats.totalRevenueChange}%`}
             changeType={stats.totalRevenueChange >= 0 ? "positive" : "negative"}
           />
-          <StatCard
-            title="Overdue Amount"
-            value={`₹${Number(stats.overdueAmount).toLocaleString()}`}
-            icon={Clock}
-            change={`${stats.overdueAmountChange}%`}
-            changeType={
-              stats.overdueAmountChange >= 0 ? "positive" : "negative"
-            }
-          />
-          <StatCard
-            title="Invoices Due"
-            value={stats.invoicesDue}
-            icon={FileText}
-            change={null}
-            changeType={null}
-          />
-
+          <AmountCarousel stats={stats} />
           <StatCard
             title="Total Customers"
             value={stats.totalCustomers}
             icon={Users}
-            change={`${stats.totalCustomersChange}`}
+            change={`${stats.totalCustomersChange}%`}
             changeType={
               stats.totalCustomersChange >= 0 ? "positive" : "negative"
             }
+            onClick={() => navigate("/customers")}
           />
+          <StatusCarousel stats={stats} />
 
           <div className="lg:col-span-2">
             <RevenueChart />
@@ -118,7 +110,13 @@ export default function Dashboard() {
             <InvoiceStatusChart />
           </div>
           <div className="lg:col-span-2">
+            <TopItemsChart />
+          </div>
+          <div className="lg:col-span-2">
             <TopCustomers data={topCustomers} />
+          </div>
+          <div className="lg:col-span-2">
+            <TransactionsChart />
           </div>
         </div>
       </div>

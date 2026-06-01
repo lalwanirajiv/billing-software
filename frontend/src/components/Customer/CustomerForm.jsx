@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import FormHeader from "./FormHeader";
 import AddressSection from "./AddressSection";
 import CustomerInfoSection from "./CustomerInfoSection";
-const API_URL = import.meta.env.VITE_API_URL;
+import { createCustomer, getCustomerById, updateCustomer } from "../../lib/api";
+import { BackButton } from "../Reusables/BackButton";
 
 const initialCustomerData = {
   name: "",
@@ -13,8 +15,33 @@ const initialCustomerData = {
 };
 
 export default function CustomerForm() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const isEditMode = !!id;
+
   const [customerData, setCustomerData] = useState(initialCustomerData);
   const [saveStatus, setSaveStatus] = useState("");
+
+  useEffect(() => {
+    if (isEditMode) {
+      const fetchCustomer = async () => {
+        try {
+          const data = await getCustomerById(id);
+          setCustomerData({
+            name: data.name,
+            address_line1: data.address_line1 || "",
+            address_line2: data.address_line2 || "",
+            phone: data.phone_number || "",
+            gstin: data.gstin || "",
+          });
+        } catch (error) {
+          console.error("Failed to fetch customer data:", error);
+          setSaveStatus("error");
+        }
+      };
+      fetchCustomer();
+    }
+  }, [id, isEditMode]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -25,16 +52,15 @@ export default function CustomerForm() {
     e.preventDefault();
     setSaveStatus("saving");
     try {
-      const response = await fetch(API_URL+"/api/customer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(customerData),
-      });
-
-      if (!response.ok) throw new Error("Failed to save");
-
-      setSaveStatus("success");
-      setCustomerData(initialCustomerData);
+      if (isEditMode) {
+        await updateCustomer(id, customerData);
+        setSaveStatus("success");
+        setTimeout(() => navigate("/customers"), 1500);
+      } else {
+        await createCustomer(customerData);
+        setSaveStatus("success");
+        setCustomerData(initialCustomerData);
+      }
     } catch (error) {
       console.error(error);
       setSaveStatus("error");
@@ -42,10 +68,11 @@ export default function CustomerForm() {
   };
 
   return (
-    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
-      <div className="max-w-5xl w-full bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg">
-        {/* Form Header (no theme toggle needed here anymore) */}
-        <FormHeader />
+    <div className="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
+      <div className="max-w-5xl w-full">
+        <BackButton />
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
+          <FormHeader title={isEditMode ? "Edit Customer" : "Create New Customer"} />
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -61,26 +88,31 @@ export default function CustomerForm() {
 
           <div className="flex justify-end items-center gap-4 pt-4">
             {saveStatus === "success" && (
-              <p className="text-green-600 dark:text-green-400 font-medium">
-                Customer saved!
+              <p className="text-green-600 font-medium">
+                Customer {isEditMode ? "updated" : "saved"}!
               </p>
             )}
             {saveStatus === "error" && (
-              <p className="text-red-600 dark:text-red-400 font-medium">
-                Failed to save.
+              <p className="text-red-600 font-medium">
+                Failed to {isEditMode ? "update" : "save"}.
               </p>
             )}
 
             <button
               type="submit"
-              className="w-full md:w-auto px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md disabled:bg-gray-400 dark:disabled:bg-gray-600"
+              className="w-full md:w-auto px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-md disabled:bg-gray-400"
               disabled={saveStatus === "saving"}
             >
-              {saveStatus === "saving" ? "Saving..." : "Save Customer"}
+              {saveStatus === "saving" 
+                ? "Saving..." 
+                : isEditMode 
+                  ? "Update Customer" 
+                  : "Save Customer"}
             </button>
           </div>
         </form>
       </div>
     </div>
+  </div>
   );
 }
