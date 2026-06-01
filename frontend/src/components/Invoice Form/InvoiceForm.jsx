@@ -8,14 +8,17 @@ import ConfirmSaveModal from "../Reusables/ConfirmSaveModal";
 import { useToast } from "../../context/ToastContext";
 import { 
   getAllCustomers, 
-  checkInvoice, 
-  getIdByName, 
+  getCustomerByExactName, 
   createInvoice, 
   updateInvoice, 
   getInvoiceById, 
   getCustomerById,
-  getNextBillNo
+  getNextBillNo,
+  buildFinalBillNo
 } from "../../lib/api";
+import { calculateInvoiceTax } from "../../lib/companySettings";
+import { useCompanySettings } from "../../context/CompanySettingsContext";
+import { normalizeName } from "../../lib/validation";
 
 const initialFormData = {
   shipTo: "",
@@ -33,6 +36,7 @@ const initialFormData = {
 export default function InvoiceForm() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { settings } = useCompanySettings();
   const { id: invoiceIdParam } = useParams();
   const isExistingInvoice = !!invoiceIdParam;
   const [formData, setFormData] = useState(initialFormData);
@@ -50,13 +54,14 @@ export default function InvoiceForm() {
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
   const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
   const [errors, setErrors] = useState({});
+  const [isLoadingInvoice, setIsLoadingInvoice] = useState(isExistingInvoice);
 
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
         const data = await getAllCustomers();
         setCustomers(data);
-      } catch (error) {
+      } catch {
         showToast("Failed to fetch customers", "error");
       } finally {
         setIsLoadingCustomers(false);
@@ -66,97 +71,81 @@ export default function InvoiceForm() {
   }, [showToast]);
 
   useEffect(() => {
-    // Only pre-fill form data from localStorage when EDITING an existing invoice
     const loadInvoiceData = async () => {
       if (!isExistingInvoice) {
-        // Clear stale data so new invoice form starts blank
-        localStorage.removeItem("invoice-data");
-        localStorage.removeItem("customer-data");
-        // Auto-populate the next bill number with Financial Year
+        setIsLoadingInvoice(false);
         try {
           const now = new Date();
-          const currentMonth = now.getMonth() + 1; // 1-12
-          const currentYear = now.getFullYear();
-          const fyStartYear = currentMonth >= 4 ? currentYear : currentYear - 1;
-          const fyEndYear = fyStartYear + 1;
-          const fyPrefix = `${fyStartYear}-${fyEndYear}`;
-          
           const nextBillNo = await getNextBillNo();
-          setFormData({ 
-            ...initialFormData, 
+          setFormData({
+            ...initialFormData,
             billNo: String(nextBillNo),
-            date: now.toISOString().split("T")[0] // Also set current date
+            date: now.toISOString().split("T")[0],
+            state: settings.default_state_label || "State",
           });
-        } catch (e) {
-          setFormData(initialFormData);
+        } catch {
+          setFormData({
+            ...initialFormData,
+            state: settings.default_state_label || "State",
+          });
         }
         return;
       }
 
+      setIsLoadingInvoice(true);
       try {
-        let parsedData = null;
+        const apiInvoice = await getInvoiceById(invoiceIdParam);
         let parsedCustomer = null;
 
-        // Try getting from API first as it's more reliable
-        try {
-          const apiInvoice = await getInvoiceById(invoiceIdParam);
-          parsedData = apiInvoice;
-          
-          if (apiInvoice.customer_id) {
-            try {
-              parsedCustomer = await getCustomerById(apiInvoice.customer_id);
-            } catch (custErr) {
-              console.warn("Could not fetch customer details:", custErr);
-            }
+        if (apiInvoice.customer_id) {
+          try {
+            parsedCustomer = await getCustomerById(apiInvoice.customer_id);
+          } catch (custErr) {
+            console.warn("Could not fetch customer details:", custErr);
           }
-        } catch (apiErr) {
-          console.warn("API fetch failed, trying localStorage:", apiErr);
-          const existingData = localStorage.getItem("invoice-data");
-          const existingCustomerData = localStorage.getItem("customer-data");
-          if (existingData) parsedData = JSON.parse(existingData);
-          if (existingCustomerData) parsedCustomer = JSON.parse(existingCustomerData);
         }
 
-        if (parsedData) {
-          const mergedData = {
-            ...initialFormData,
-            ...parsedData,
-            invoice_id: parsedData.invoice_id || invoiceIdParam,
-            shipTo: parsedData.ship_to || parsedCustomer?.name || "",
-            gstin: parsedCustomer?.gstin || "N/A",
-            billNo: parsedData.bill_no && parsedData.bill_no.includes("_") 
-              ? parsedData.bill_no.split("_")[1] 
-              : parsedData.bill_no || "",
-            address_line1: parsedCustomer?.address_line1 || "N/A",
-            address_line2: parsedCustomer?.address_line2 || "N/A",
-            date: parsedData.date
-              ? new Date(parsedData.date).toISOString().split("T")[0]
-              : "",
-
-            grand_total: parsedData.grand_total || 0,
-            discount: parsedData.discount || 0,
-            items:
-              parsedData.items && parsedData.items.length
-                ? parsedData.items.map((item) => ({
-                    name: item.item_name || "",
-                    hsn: item.hsn || "",
-                    qty: Number(item.quantity) || 0,
-                    rate: Number(item.price) || 0,
-                    amount: Number(item.total) || 0,
-                  }))
-                : [{ name: "", hsn: "", qty: 0, rate: 0, amount: 0 }],
-          };
-
-          setFormData(mergedData);
-        }
+        setFormData({
+          ...initialFormData,
+          ...apiInvoice,
+          invoice_id: apiInvoice.invoice_id || invoiceIdParam,
+          shipTo: apiInvoice.ship_to || parsedCustomer?.name || "",
+          gstin: parsedCustomer?.gstin || "",
+          billNo:
+            apiInvoice.bill_no && apiInvoice.bill_no.includes("_")
+              ? apiInvoice.bill_no.split("_")[1]
+              : apiInvoice.bill_no || "",
+          address_line1: parsedCustomer?.address_line1 || "",
+          address_line2: parsedCustomer?.address_line2 || "",
+          terms: apiInvoice.terms_of_payment || "",
+          state: apiInvoice.state || settings.default_state_label || "State",
+          date: apiInvoice.date
+            ? new Date(apiInvoice.date).toISOString().split("T")[0]
+            : "",
+          grand_total: apiInvoice.grand_total || 0,
+          discount: apiInvoice.discount || 0,
+          items:
+            apiInvoice.items && apiInvoice.items.length
+              ? apiInvoice.items.map((item) => ({
+                  name: item.item_name || "",
+                  hsn: item.hsn || "",
+                  qty: Number(item.quantity) || 0,
+                  rate: Number(item.price) || 0,
+                  amount: Number(item.total) || 0,
+                }))
+              : [{ name: "", hsn: "", qty: 0, rate: 0, amount: 0 }],
+        });
       } catch (error) {
         console.error("Error loading invoice data:", error);
-        showToast("Failed to load invoice data", "error");
+        showToast("Failed to load invoice from database.", "error");
+        navigate("/invoices");
+      } finally {
+        setIsLoadingInvoice(false);
       }
     };
 
     loadInvoiceData();
-  }, [isExistingInvoice, invoiceIdParam, showToast]);
+  }, [isExistingInvoice, invoiceIdParam, showToast, navigate, settings.default_state_label]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -178,9 +167,17 @@ export default function InvoiceForm() {
   const validate = () => {
     const newErrors = {};
 
-    // Customer name
-    if (!formData.shipTo || formData.shipTo.trim() === "") {
+    const shipTo = normalizeName(formData.shipTo);
+    if (!shipTo) {
       newErrors.shipTo = "Customer name is required.";
+    } else {
+      const matched = customers.some(
+        (c) => normalizeName(c.name).toLowerCase() === shipTo.toLowerCase()
+      );
+      if (!matched) {
+        newErrors.shipTo =
+          "Select an existing customer from the list or create one first.";
+      }
     }
 
     // Bill number
@@ -269,8 +266,10 @@ export default function InvoiceForm() {
   };
 
   const handleClear = () => {
-    localStorage.removeItem("invoiceData");
-    setFormData(initialFormData);
+    setFormData({
+      ...initialFormData,
+      state: settings.default_state_label || "State",
+    });
   };
 
   // --- Auto-calc totals ---
@@ -288,12 +287,10 @@ export default function InvoiceForm() {
       sgst = 0,
       igst = 0;
 
-    if (formData.state.toLowerCase() === "interstate") {
-      igst = sub_total * 0.05;
-    } else {
-      cgst = sub_total * 0.025;
-      sgst = sub_total * 0.025;
-    }
+    const tax = calculateInvoiceTax(sub_total, formData.state, settings);
+    cgst = tax.cgst;
+    sgst = tax.sgst;
+    igst = tax.igst;
 
     const discount = Number(formData.discount) || 0;
     const totalAmount = sub_total + cgst + sgst + igst - discount;
@@ -310,45 +307,15 @@ export default function InvoiceForm() {
       adjustment,
       grand_total,
     });
-  }, [formData.items, formData.state, formData.discount]);
+  }, [formData.items, formData.state, formData.discount, settings]);
 
   // --- Save Logic ---
   const saveInvoice = async () => {
     try {
-      // 1. Check duplicate bill number (only for new invoices)
-      if (!isExistingInvoice) {
-        const checkRes = await checkInvoice(formData.billNo);
-        if (checkRes.exists) {
-          showToast(
-            `Invoice with Bill #${formData.billNo} already exists.`,
-            "error"
-          );
-          return;
-        }
-      }
+      const customer = await getCustomerByExactName(formData.shipTo);
+      const customerId = customer.customer_id;
 
-      // 2. Lookup customer_id
-      let customerId = null;
-      try {
-        const customer = await getIdByName(formData.shipTo);
-        if (customer && customer.length) {
-          customerId = customer[0].customer_id;
-        }
-      } catch (err) {
-        console.warn("Customer lookup failed:", err);
-      }
-
-      // 3. Build payload with dynamic Financial Year prefix
-      const invDate = formData.date ? new Date(formData.date) : new Date();
-      const invMonth = invDate.getMonth() + 1;
-      const invYear = invDate.getFullYear();
-      const fyStartYear = invMonth >= 4 ? invYear : invYear - 1;
-      const fyEndYear = fyStartYear + 1;
-      const fyPrefix = `${fyStartYear}-${fyEndYear}`;
-
-      const finalBillNo = /^\d+$/.test(String(formData.billNo).trim())
-        ? `${fyPrefix}_${parseInt(formData.billNo, 10)}`
-        : String(formData.billNo).trim();
+      const finalBillNo = buildFinalBillNo(formData.billNo, formData.date);
 
       const payload = {
         customer_id: customerId,
@@ -395,18 +362,24 @@ export default function InvoiceForm() {
           "success"
         );
         navigate(`/invoice/${invoiceId}`);
-        localStorage.removeItem("invoice-data");
-        localStorage.removeItem("customer-data");
       } else {
         showToast("Invoice saved but ID missing in response", "warning");
       }
     } catch (error) {
       console.error("Error saving invoice:", error);
-      showToast("Failed to save invoice. Please try again.", "error");
+      showToast(error.message || "Failed to save invoice. Please try again.", "error");
     }
   };
 
   // --- Render ---
+  if (isLoadingInvoice) {
+    return (
+      <div className="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-center justify-center">
+        <p className="text-gray-500 dark:text-gray-400 text-lg">Loading invoice...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -424,6 +397,7 @@ export default function InvoiceForm() {
               isSuggestionsVisible={isSuggestionsVisible}
               setIsSuggestionsVisible={setIsSuggestionsVisible}
               isLoadingCustomers={isLoadingCustomers}
+              intraStateLabel={settings.default_state_label || "State"}
               errors={errors}
               filteredCustomers={
                 formData.shipTo

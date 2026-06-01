@@ -24,7 +24,7 @@ const TransactionsChart = () => {
           if (item.month && item.month !== "Unknown") {
             try {
               name = new Date(item.month + "-01").toLocaleString('default', { month: 'short' });
-            } catch (e) {
+            } catch {
               name = item.month;
             }
           }

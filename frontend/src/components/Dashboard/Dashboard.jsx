@@ -15,8 +15,6 @@ import { getDashboardStats } from "../../lib/api";
 export default function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
-  const [topCustomers, setTopCustomers] = useState([]);
-  const [recentInvoices, setRecentInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -104,7 +102,7 @@ export default function Dashboard() {
             <RevenueChart />
           </div>
           <div className="lg:col-span-2">
-            <RecentInvoices data={recentInvoices} />
+            <RecentInvoices />
           </div>
           <div className="lg:col-span-2">
             <InvoiceStatusChart />
@@ -113,7 +111,7 @@ export default function Dashboard() {
             <TopItemsChart />
           </div>
           <div className="lg:col-span-2">
-            <TopCustomers data={topCustomers} />
+            <TopCustomers />
           </div>
           <div className="lg:col-span-2">
             <TransactionsChart />

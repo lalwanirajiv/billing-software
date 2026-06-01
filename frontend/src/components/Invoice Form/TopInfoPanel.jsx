@@ -9,6 +9,7 @@ const TopInfoPanel = ({
   setIsSuggestionsVisible,
   isLoadingCustomers,
   filteredCustomers,
+  intraStateLabel = "State",
   errors = {},
 }) => (
   <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
@@ -45,7 +46,7 @@ const TopInfoPanel = ({
               {filteredCustomers.length > 0 ? (
                 filteredCustomers.map((customer) => (
                   <li
-                    key={customer.id}
+                    key={customer.customer_id}
                     onMouseDown={() => handleSuggestionClick(customer)}
                     className="p-2 text-gray-800 dark:text-gray-100 hover:bg-blue-500 hover:text-white dark:hover:bg-blue-600 cursor-pointer"
                   >
@@ -214,7 +215,7 @@ const TopInfoPanel = ({
           onChange={handleChange}
           className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
         >
-          <option value="State">State</option>
+          <option value={intraStateLabel}>{intraStateLabel}</option>
           <option value="Interstate">Interstate</option>
         </select>
       </div>

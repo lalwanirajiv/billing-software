@@ -5,6 +5,8 @@ import AddressSection from "./AddressSection";
 import CustomerInfoSection from "./CustomerInfoSection";
 import { createCustomer, getCustomerById, updateCustomer } from "../../lib/api";
 import { BackButton } from "../Reusables/BackButton";
+import { validateCustomerData } from "../../lib/validation";
+import { useToast } from "../../context/ToastContext";
 
 const initialCustomerData = {
   name: "",
@@ -21,6 +23,8 @@ export default function CustomerForm() {
 
   const [customerData, setCustomerData] = useState(initialCustomerData);
   const [saveStatus, setSaveStatus] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (isEditMode) {
@@ -46,24 +50,43 @@ export default function CustomerForm() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCustomerData((prev) => ({ ...prev, [name]: value }));
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const validationErrors = validateCustomerData(customerData);
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
+      showToast("Please fix the highlighted fields.", "error");
+      return;
+    }
+
+    setFieldErrors({});
     setSaveStatus("saving");
     try {
       if (isEditMode) {
         await updateCustomer(id, customerData);
         setSaveStatus("success");
+        showToast("Customer updated successfully!", "success");
         setTimeout(() => navigate("/customers"), 1500);
       } else {
         await createCustomer(customerData);
         setSaveStatus("success");
+        showToast("Customer saved successfully!", "success");
         setCustomerData(initialCustomerData);
       }
     } catch (error) {
       console.error(error);
       setSaveStatus("error");
+      showToast(error.message || "Failed to save customer.", "error");
     }
   };
 
@@ -79,6 +102,7 @@ export default function CustomerForm() {
             <CustomerInfoSection
               customerData={customerData}
               handleChange={handleChange}
+              errors={fieldErrors}
             />
             <AddressSection
               customerData={customerData}

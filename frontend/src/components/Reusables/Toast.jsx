@@ -20,6 +20,11 @@ export const Toast = ({ message, type = "error", onClose }) => {
       bg: "bg-white dark:bg-gray-800",
       Icon: InfoIcon,
     },
+    warning: {
+      border: "border-amber-500",
+      bg: "bg-white dark:bg-gray-800",
+      Icon: AlertTriangleIcon,
+    },
   };
 
   const { border, bg, Icon } = toastStyles[type] || toastStyles.success;

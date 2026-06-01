@@ -54,7 +54,6 @@ export default function Invoice() {
       setLoading(true);
       const data = await getInvoiceById(id);
       setInvoiceData(data);
-      localStorage.setItem("invoice-data", JSON.stringify(data));
     } catch (err) {
       console.error("Error fetching invoice:", err);
       showToast(`Error fetching invoice: ${err.message}`, "error");
@@ -66,14 +65,11 @@ export default function Invoice() {
   useEffect(() => {
     if (params.id) {
       fetchInvoice(params.id);
-    } else {
-      const savedData = localStorage.getItem("invoice-data");
-      if (savedData) {
-        setInvoiceData(JSON.parse(savedData));
-      }
-      setLoading(false);
+      return;
     }
-  }, [params.id, fetchInvoice]);
+    setLoading(false);
+    navigate("/invoices", { replace: true });
+  }, [params.id, fetchInvoice, navigate]);
 
   // --- Handlers ---
   const handleEdit = () => {

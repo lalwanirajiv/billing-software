@@ -1,7 +1,9 @@
 import React from "react";
+import { useCompanySettings } from "../../context/CompanySettingsContext";
+
 const numberToWords = (num) => {
   if (num === null || num === undefined) return "";
-  num = Math.floor(num); // Ensure we are working with an integer
+  num = Math.floor(num);
   if (num === 0) return "Zero";
 
   const ones = [
@@ -79,8 +81,9 @@ const numberToWords = (num) => {
   const result = words.join(" ").trim();
   return result.charAt(0).toUpperCase() + result.slice(1) + " rupees only";
 };
+
 const SellerBankDetails = ({ data }) => {
-  // Use the helper function to get the amount in words
+  const { settings } = useCompanySettings();
   const amountInWords = numberToWords(data.grand_total);
 
   return (
@@ -91,24 +94,33 @@ const SellerBankDetails = ({ data }) => {
       </div>
       <div className="border border-gray-300 dark:border-gray-600 p-2 rounded-md text-xs">
         <h4 className="font-bold mb-2 underline">BANK DETAILS</h4>
-        <p>
-          <span className="font-semibold">BANK NAME:</span> KOTAK MAHINDRA BANK
-        </p>
-        <p>
-          <span className="font-semibold">BANK A/C NO:</span> 4413075389
-        </p>
-        <p>
-          <span className="font-semibold">BANK IFSC CODE:</span> KKBK0002580
-        </p>
+        {settings.bank_name && (
+          <p>
+            <span className="font-semibold">BANK NAME:</span> {settings.bank_name}
+          </p>
+        )}
+        {settings.bank_account && (
+          <p>
+            <span className="font-semibold">BANK A/C NO:</span> {settings.bank_account}
+          </p>
+        )}
+        {settings.bank_ifsc && (
+          <p>
+            <span className="font-semibold">BANK IFSC CODE:</span> {settings.bank_ifsc}
+          </p>
+        )}
       </div>
-      <div className="border border-gray-300 dark:border-gray-600 p-2 rounded-md">
-        <h4 className="font-bold mb-2 underline">TERMS & CONDITIONS:</h4>
-        <p className="text-xs">1. Goods once sold will not be taken back.</p>
-        <p className="text-xs">
-          2. Interest @18% p.a. will be charged if payment is not made within
-          the due date.
-        </p>
-      </div>
+      {(settings.terms_line1 || settings.terms_line2) && (
+        <div className="border border-gray-300 dark:border-gray-600 p-2 rounded-md">
+          <h4 className="font-bold mb-2 underline">TERMS & CONDITIONS:</h4>
+          {settings.terms_line1 && (
+            <p className="text-xs">1. {settings.terms_line1}</p>
+          )}
+          {settings.terms_line2 && (
+            <p className="text-xs">2. {settings.terms_line2}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 };

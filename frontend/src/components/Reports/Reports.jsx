@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   getSalesReport,
   getTaxReport,
@@ -18,18 +18,6 @@ import { BackButton } from "../Reusables/BackButton";
 
 export default function Reports() {
   const isFetching = useRef(false);
-
-  // Logic for Indian Financial Year (April to March)
-  const fy = useMemo(() => {
-    const today = new Date();
-    const currentMonth = today.getMonth(); 
-    const currentYear = today.getFullYear();
-    let FYStartYear = currentMonth >= 3 ? currentYear : currentYear - 1;
-    return {
-      start: `${FYStartYear}-04-01`,
-      end: today.toISOString().split("T")[0]
-    };
-  }, []);
 
   const [reportType, setReportType] = useState("salesSummary");
   const [startDate, setStartDate] = useState("");

@@ -8,8 +8,7 @@ const ShipToDetails = ({ data }) => {
     const getCustomer = async (customer_id) => {
       try {
         const customerData = await getCustomerById(customer_id);
-        setCustomer(customerData); 
-        localStorage.setItem("customer-data",JSON.stringify(customerData));
+        setCustomer(customerData);
       } catch (error) {
         console.error("Error fetching customer:", error);
       }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Toast } from "../Reusables/Toast";
+import { useToast } from "../../context/ToastContext";
 import { getAllInvoices, deleteInvoice, deleteInvoicesBulk, getDetailedInvoicesByDate } from "../../lib/api";
 
 // Sub-components
@@ -14,6 +14,7 @@ import { BackButton } from "../Reusables/BackButton";
 export default function InvoiceList() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { showToast } = useToast();
   const [invoices, setInvoices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,7 +24,6 @@ export default function InvoiceList() {
   const [filteredInvoices, setFilteredInvoices] = useState([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
-  const [toast, setToast] = useState({ message: "", type: "info" });
   const [selectedInvoices, setSelectedInvoices] = useState([]);
   const [isBulkDelete, setIsBulkDelete] = useState(false);
   
@@ -88,13 +88,6 @@ export default function InvoiceList() {
     setFilteredInvoices(results);
   }, [searchTerm, dateFilter, statusFilter, invoices]);
 
-  useEffect(() => {
-    if (toast.message) {
-      const timer = setTimeout(() => setToast({ message: "", type: "info" }), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast.message]);
-
   const handleRowClick = (invoiceId) => {
     navigate(`/invoice/${invoiceId}`);
   };
@@ -122,13 +115,10 @@ export default function InvoiceList() {
       try {
         await deleteInvoicesBulk(selectedInvoices);
         setInvoices(invoices.filter((i) => !selectedInvoices.includes(i.invoice_id)));
-        setToast({
-          message: `${selectedInvoices.length} invoices were deleted successfully.`,
-          type: "success"
-        });
+        showToast(`${selectedInvoices.length} invoices were deleted successfully.`, "success");
         setSelectedInvoices([]);
-      } catch (err) {
-        setToast({ message: "Error: Failed to delete invoices.", type: "error" });
+      } catch {
+        showToast("Error: Failed to delete invoices.", "error");
       } finally {
         handleCloseModal();
       }
@@ -140,12 +130,9 @@ export default function InvoiceList() {
       await deleteInvoice(invoiceToDelete.invoice_id);
       setInvoices(invoices.filter((i) => i.invoice_id !== invoiceToDelete.invoice_id));
       setSelectedInvoices(prev => prev.filter(id => id !== invoiceToDelete.invoice_id));
-      setToast({
-        message: `Invoice #${invoiceToDelete.bill_no} was deleted successfully.`,
-        type: "success"
-      });
-    } catch (err) {
-      setToast({ message: "Error: Failed to delete invoice.", type: "error" });
+      showToast(`Invoice #${invoiceToDelete.bill_no} was deleted successfully.`, "success");
+    } catch {
+      showToast("Error: Failed to delete invoice.", "error");
     } finally {
       handleCloseModal();
     }
@@ -176,10 +163,10 @@ export default function InvoiceList() {
 
   const handleExportCSV = async (start, end) => {
     try {
-      setToast({ message: "Preparing CSV export...", type: "info" });
+      showToast("Preparing CSV export...", "info");
       const { data } = await getDetailedInvoicesByDate(start, end);
       if (data.length === 0) {
-        setToast({ message: "No invoices found for the selected range.", type: "error" });
+        showToast("No invoices found for the selected range.", "error");
         return;
       }
 
@@ -220,19 +207,19 @@ export default function InvoiceList() {
       link.click();
       document.body.removeChild(link);
       
-      setToast({ message: "CSV exported successfully!", type: "success" });
+      showToast("CSV exported successfully!", "success");
       setIsExportModalOpen(false);
-    } catch (err) {
-      setToast({ message: "Failed to export CSV.", type: "error" });
+    } catch {
+      showToast("Failed to export CSV.", "error");
     }
   };
 
   const handleExportPDF = async (start, end) => {
     try {
-      setToast({ message: "Generating PDF preview...", type: "info" });
+      showToast("Generating PDF preview...", "info");
       const { data } = await getDetailedInvoicesByDate(start, end);
       if (data.length === 0) {
-        setToast({ message: "No invoices found for the selected range.", type: "error" });
+        showToast("No invoices found for the selected range.", "error");
         return;
       }
       setExportData(data.sort((a, b) => {
@@ -246,8 +233,8 @@ export default function InvoiceList() {
         window.print();
         setExportData([]); // Clear after printing
       }, 500);
-    } catch (err) {
-      setToast({ message: "Failed to generate PDF.", type: "error" });
+    } catch {
+      showToast("Failed to generate PDF.", "error");
     }
   };
 
@@ -259,11 +246,6 @@ export default function InvoiceList() {
   return (
     <div className="bg-gray-100 dark:bg-slate-900 min-h-screen">
       <div className="no-print">
-        <Toast 
-          message={toast.message} 
-          type={toast.type} 
-          onClose={() => setToast({ message: "", type: "info" })} 
-        />
         <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           <BackButton />
           <InvoiceListHeader 

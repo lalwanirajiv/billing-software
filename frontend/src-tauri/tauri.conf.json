@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Billing Software",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "identifier": "com.kamal-readymade-stores.billing-software",
   "build": {
     "frontendDist": "../dist",
@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Billing Software",
         "width": 1200,
         "height": 800,
@@ -25,22 +26,37 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "nsis",
+      "msi"
+    ],
+    "category": "Business",
+    "shortDescription": "GST billing and invoicing desktop app",
+    "longDescription": "Desktop billing software for creating GST invoices, managing customers, generating reports, and backing up your database.",
+    "copyright": "Copyright © 2026 Kamal Readymade Stores",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "English"
+        ],
+        "displayLanguageSelector": false,
+        "startMenuFolder": "Billing Software"
+      }
+    }
   },
   "plugins": {
-    "sql": {
-      "preload": [
-        "sqlite:billing.db"
-      ]
-    },
-    "dialog": {},
-    "fs": {}
+    "sql": {}
   }
 }

@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { AppleIcon, Check, ChevronDown } from "lucide-react";
-import { Toast } from "../Reusables/Toast"; // Import existing Toast
+import { useToast } from "../../context/ToastContext";
 import { updateStatus } from "../../lib/api";
+import { logger } from "../../lib/logger";
 
 const StatusDropdown = ({ status, invoiceId, onStatusUpdated }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,7 +10,6 @@ const StatusDropdown = ({ status, invoiceId, onStatusUpdated }) => {
   const [currentStatusValue, setCurrentStatusValue] = useState(status);
   const [loading, setLoading] = useState(false);
 
-  // Keep local state in sync if parent status changes
   useEffect(() => {
     setCurrentStatusValue(status);
   }, [status]);
@@ -34,9 +34,8 @@ const StatusDropdown = ({ status, invoiceId, onStatusUpdated }) => {
   const currentStatus =
     statuses.find(
       (s) => s.value.toLowerCase() === currentStatusValue?.toLowerCase()
-    ) || statuses[1]; // fallback: "Due"
+    ) || statuses[1];
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -49,7 +48,7 @@ const StatusDropdown = ({ status, invoiceId, onStatusUpdated }) => {
 
   const handleStatusSelect = async (newStatus) => {
     if (newStatus === currentStatusValue) {
-      return; // already selected
+      return;
     }
 
     setCurrentStatusValue(newStatus);
@@ -58,14 +57,10 @@ const StatusDropdown = ({ status, invoiceId, onStatusUpdated }) => {
 
     try {
       await updateStatus(invoiceId, newStatus);
-
-      // Tell parent about success + updated status
       onStatusUpdated(`Status updated to "${newStatus}"`, "success", newStatus);
     } catch (err) {
-      console.error("Error updating status:", err);
+      logger.error("Failed to update invoice status", err);
       onStatusUpdated("Failed to update status", "error");
-
-      // revert to previous status if update fails
       setCurrentStatusValue(status);
     } finally {
       setLoading(false);
@@ -121,82 +116,71 @@ const InvoiceHeader = ({
   invoice_id,
   handleSavePDF,
 }) => {
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState("success");
+  const { showToast } = useToast();
   const [currentStatus, setCurrentStatus] = useState(status);
 
   const handleStatusUpdated = (message, type, updatedStatus) => {
-    setToastMessage(message);
-    setToastType(type);
+    showToast(message, type);
     if (updatedStatus) {
-      setCurrentStatus(updatedStatus); // update parent state
+      setCurrentStatus(updatedStatus);
     }
-    setTimeout(() => setToastMessage(""), 3000);
   };
 
   const handlePrint = () => {
     window.print();
   };
-  return (
-    <>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Invoice
-          </h1>
-          {hideSave && (
-            <StatusDropdown
-              status={currentStatus}
-              invoiceId={invoice_id}
-              onStatusUpdated={handleStatusUpdated}
-            />
-          )}
-        </div>
 
-        <div className="flex items-center gap-4">
-          {!hideSave && (
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className={`font-medium text-sm px-4 py-2 rounded-md transition-colors ${
-                isSaving
-                  ? "text-gray-500 bg-gray-200 cursor-not-allowed"
-                  : "text-white bg-green-600 hover:bg-green-700"
-              }`}
-            >
-              {isSaving ? "Saving..." : "Save Invoice"}
-            </button>
-          )}
-          <button
-            onClick={handleEdit}
-            className="font-medium text-sm px-4 py-2 rounded-md transition-colors text-white bg-yellow-500 hover:bg-yellow-600"
-          >
-            Edit
-          </button>
-          <button
-            onClick={handlePrint}
-            className="font-medium text-sm px-4 py-2 rounded-md transition-colors text-white bg-blue-600 hover:bg-blue-700"
-          >
-            Print
-          </button>
-          {hideSave && (
-            <button
-              onClick={handleSavePDF}
-              className="font-medium text-sm px-4 py-2 rounded-md transition-colors text-white bg-indigo-600 hover:bg-indigo-700"
-            >
-              Save
-            </button>
-          )}
-        </div>
+  return (
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
+      <div className="flex items-center gap-4">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          Invoice
+        </h1>
+        {hideSave && (
+          <StatusDropdown
+            status={currentStatus}
+            invoiceId={invoice_id}
+            onStatusUpdated={handleStatusUpdated}
+          />
+        )}
       </div>
 
-      {/* Toast */}
-      <Toast
-        message={toastMessage}
-        type={toastType}
-        onClose={() => setToastMessage("")}
-      />
-    </>
+      <div className="flex items-center gap-4">
+        {!hideSave && (
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className={`font-medium text-sm px-4 py-2 rounded-md transition-colors ${
+              isSaving
+                ? "text-gray-500 bg-gray-200 cursor-not-allowed"
+                : "text-white bg-green-600 hover:bg-green-700"
+            }`}
+          >
+            {isSaving ? "Saving..." : "Save Invoice"}
+          </button>
+        )}
+        <button
+          onClick={handleEdit}
+          className="font-medium text-sm px-4 py-2 rounded-md transition-colors text-white bg-yellow-500 hover:bg-yellow-600"
+        >
+          Edit
+        </button>
+        <button
+          onClick={handlePrint}
+          className="font-medium text-sm px-4 py-2 rounded-md transition-colors text-white bg-blue-600 hover:bg-blue-700"
+        >
+          Print
+        </button>
+        {hideSave && (
+          <button
+            onClick={handleSavePDF}
+            className="font-medium text-sm px-4 py-2 rounded-md transition-colors text-white bg-indigo-600 hover:bg-indigo-700"
+          >
+            Save
+          </button>
+        )}
+      </div>
+    </div>
   );
 };
 

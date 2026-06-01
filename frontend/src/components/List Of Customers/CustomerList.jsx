@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModel";
-import { Toast } from "../Reusables/Toast";
+import { useToast } from "../../context/ToastContext";
 import { EditIcon, TrashIcon, SearchIcon } from "../Reusables/Icons";
 import { getAllCustomers, deleteCustomer, deleteCustomersBulk } from "../../lib/api";
 import { Calendar, FileDown, FileText, Download, Printer, Users } from "lucide-react";
@@ -9,6 +9,7 @@ import { BackButton } from "../Reusables/BackButton";
 
 export default function CustomerList() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [customers, setCustomers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,12 +19,10 @@ export default function CustomerList() {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState(null);
-  const [toast, setToast] = useState({ message: "", type: "info" });
   const [selectedCustomers, setSelectedCustomers] = useState([]);
   const [isBulkDelete, setIsBulkDelete] = useState(false);
   
   // Export states
-  const [isExporting, setIsExporting] = useState(false);
   const [exportData, setExportData] = useState([]);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
@@ -50,13 +49,6 @@ export default function CustomerList() {
     setFilteredCustomers(results);
   }, [searchTerm, customers]);
 
-  useEffect(() => {
-    if (toast.message) {
-      const timer = setTimeout(() => setToast({ message: "", type: "info" }), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast.message]);
-
   const handleDeleteClick = (customer) => {
     setCustomerToDelete(customer);
     setIsDeleteModalOpen(true);
@@ -74,14 +66,11 @@ export default function CustomerList() {
       try {
         await deleteCustomersBulk(selectedCustomers);
         setCustomers(customers.filter((c) => !selectedCustomers.includes(c.customer_id)));
-        setToast({
-          message: `${selectedCustomers.length} customers were deleted successfully.`,
-          type: "success"
-        });
+        showToast(`${selectedCustomers.length} customers were deleted successfully.`, "success");
         setSelectedCustomers([]);
       } catch (err) {
         console.error("Error deleting customers:", err);
-        setToast({ message: "Error: Failed to delete customers.", type: "error" });
+        showToast("Error: Failed to delete customers.", "error");
       } finally {
         handleCloseModal();
       }
@@ -95,13 +84,10 @@ export default function CustomerList() {
       await deleteCustomer(customerId);
       setCustomers(customers.filter((c) => c.customer_id !== customerId));
       setSelectedCustomers(prev => prev.filter(id => id !== customerId));
-      setToast({
-        message: `Customer "${customerToDelete.name}" was deleted successfully.`,
-        type: "success"
-      });
+      showToast(`Customer "${customerToDelete.name}" was deleted successfully.`, "success");
     } catch (err) {
       console.error("Error deleting customer:", err);
-      setToast({ message: "Error: Failed to delete customer.", type: "error" });
+      showToast("Error: Failed to delete customer.", "error");
     } finally {
       handleCloseModal();
     }
@@ -132,7 +118,7 @@ export default function CustomerList() {
 
   const handleExportCSV = () => {
     try {
-      setToast({ message: "Preparing Customer Directory CSV...", type: "info" });
+      showToast("Preparing Customer Directory CSV...", "info");
       const headers = ["Customer Name", "Address Line 1", "Address Line 2", "Phone", "GSTIN"];
       const csvRows = [headers.join(",")];
 
@@ -157,14 +143,14 @@ export default function CustomerList() {
       link.click();
       document.body.removeChild(link);
       
-      setToast({ message: "Customer directory exported successfully!", type: "success" });
-    } catch (err) {
-      setToast({ message: "Failed to export CSV.", type: "error" });
+      showToast("Customer directory exported successfully!", "success");
+    } catch {
+      showToast("Failed to export CSV.", "error");
     }
   };
 
   const handleExportPDF = () => {
-    setToast({ message: "Generating PDF directory...", type: "info" });
+    showToast("Generating PDF directory...", "info");
     setExportData(filteredCustomers);
     setIsExportMenuOpen(false);
     setTimeout(() => {
@@ -188,12 +174,6 @@ export default function CustomerList() {
   return (
     <div className="bg-gray-100 dark:bg-slate-900 min-h-screen">
       <div className="no-print">
-        <Toast 
-          message={toast.message} 
-          type={toast.type} 
-          onClose={() => setToast({ message: "", type: "info" })} 
-        />
-
         <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           <BackButton />
           {/* Header & Search */}

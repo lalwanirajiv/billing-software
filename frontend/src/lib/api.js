@@ -1,16 +1,131 @@
-import { getDB } from "./database";
+import { getDB, withTransaction } from "./database";
+import { assertValidCustomerData, normalizeName } from "./validation";
+
+// ================= INVOICE HELPERS ================= //
+
+export function buildFinalBillNo(billNo, date = new Date()) {
+  const trimmed = String(billNo ?? "").trim();
+  if (!trimmed) return "";
+
+  if (/^\d+$/.test(trimmed)) {
+    const invDate = date ? new Date(date) : new Date();
+    const invMonth = invDate.getMonth() + 1;
+    const invYear = invDate.getFullYear();
+    const fyStartYear = invMonth >= 4 ? invYear : invYear - 1;
+    const fyEndYear = fyStartYear + 1;
+    return `${fyStartYear}-${fyEndYear}_${parseInt(trimmed, 10)}`;
+  }
+
+  return trimmed;
+}
+
+async function assertBillNoAvailable(db, billNo, excludeInvoiceId = null) {
+  if (!billNo) {
+    throw new Error("Bill number is required");
+  }
+
+  const rows = excludeInvoiceId
+    ? await db.select(
+        `SELECT invoice_id FROM invoices WHERE bill_no = $1 AND invoice_id != $2`,
+        [billNo, excludeInvoiceId]
+      )
+    : await db.select(`SELECT invoice_id FROM invoices WHERE bill_no = $1`, [billNo]);
+
+  if (rows.length > 0) {
+    throw new Error("An invoice with this bill number already exists.");
+  }
+}
+
+async function insertInvoiceItems(db, invoiceId, items) {
+  if (!items?.length) return;
+
+  for (const item of items) {
+    await db.execute(
+      `INSERT INTO items (invoice_id, item_name, hsn, quantity, price, total) VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        invoiceId,
+        item.item_name || item.name,
+        item.hsn,
+        item.quantity || item.qty,
+        item.price || item.rate,
+        item.total || item.amount,
+      ]
+    );
+  }
+}
+
+function invoiceInsertParams(data, billNo) {
+  const {
+    ship_to,
+    date,
+    terms_of_payment,
+    state,
+    total_quantity,
+    sub_total,
+    cgst,
+    sgst,
+    igst,
+    grand_total,
+    discount,
+    customer_id,
+  } = data;
+
+  return [
+    ship_to || "",
+    billNo,
+    date || null,
+    terms_of_payment || "30 Days",
+    state || "State",
+    Number(total_quantity) || 0,
+    Number(sub_total) || 0,
+    Number(cgst) || 0,
+    Number(sgst) || 0,
+    Number(igst) || 0,
+    Number(grand_total) || 0,
+    Number(discount) || 0,
+    customer_id || null,
+  ];
+}
 
 // ================= CUSTOMERS ================= //
 
+async function findCustomerByExactName(db, name, excludeCustomerId = null) {
+  const trimmed = normalizeName(name);
+  if (!trimmed) return null;
+
+  const rows = excludeCustomerId
+    ? await db.select(
+        `SELECT * FROM customers
+         WHERE LOWER(TRIM(name)) = LOWER($1) AND is_deleted = 0 AND customer_id != $2`,
+        [trimmed, excludeCustomerId]
+      )
+    : await db.select(
+        `SELECT * FROM customers
+         WHERE LOWER(TRIM(name)) = LOWER($1) AND is_deleted = 0`,
+        [trimmed]
+      );
+
+  return rows;
+}
+
 export const createCustomer = async (data) => {
+  assertValidCustomerData(data);
+
   const db = await getDB();
-  const { name, address_line1, address_line2, gstin, phone } = data;
-  if (!name || name.trim() === "") throw new Error("Customer name is required");
+  const name = normalizeName(data.name);
+  const gstin = normalizeName(data.gstin).toUpperCase() || null;
+  const phone = normalizeName(data.phone) || null;
+  const { address_line1, address_line2 } = data;
+
+  const existing = await findCustomerByExactName(db, name);
+  if (existing.length > 0) {
+    throw new Error("A customer with this name already exists.");
+  }
 
   const result = await db.execute(
     `INSERT INTO customers (name, address_line1, address_line2, gstin, phone_number, created_at)
      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)`,
-    [name, address_line1 || null, address_line2 || null, gstin || null, phone || null]
+    [name, address_line1 || null, address_line2 || null, gstin, phone]
   );
   return { message: "Customer created successfully!", customerId: result.lastInsertId };
 };
@@ -31,29 +146,47 @@ export const getCustomerById = async (id) => {
   return customers[0];
 };
 
-export const getIdByName = async (name) => {
+/** Exact name match (case-insensitive, trimmed). */
+export const getCustomerByExactName = async (name) => {
   const db = await getDB();
-  if (!name || name.trim() === "") throw new Error("Name is required");
+  const trimmed = normalizeName(name);
+  if (!trimmed) throw new Error("Customer name is required");
 
-  // case insensitive search in sqlite is default for LIKE
-  const customers = await db.select(
-    `SELECT * FROM customers WHERE name LIKE $1 AND is_deleted = 0`,
-    [`%${name}%`]
-  );
-  if (customers.length === 0) throw new Error("Customer not found");
-  return customers;
+  const customers = await findCustomerByExactName(db, trimmed);
+  if (customers.length === 0) {
+    throw new Error("Customer not found. Please select a customer from the list or create one first.");
+  }
+  if (customers.length > 1) {
+    throw new Error("Multiple customers match this name. Please use a unique customer name.");
+  }
+  return customers[0];
+};
+
+/** @deprecated Use getCustomerByExactName — kept for compatibility */
+export const getIdByName = async (name) => {
+  const customer = await getCustomerByExactName(name);
+  return [customer];
 };
 
 export const updateCustomer = async (id, data) => {
+  assertValidCustomerData(data);
+
   const db = await getDB();
-  const { name, address_line1, address_line2, gstin, phone } = data;
-  if (!name || name.trim() === "") throw new Error("Customer name is required");
+  const name = normalizeName(data.name);
+  const gstin = normalizeName(data.gstin).toUpperCase() || null;
+  const phone = normalizeName(data.phone) || null;
+  const { address_line1, address_line2 } = data;
+
+  const duplicates = await findCustomerByExactName(db, name, id);
+  if (duplicates.length > 0) {
+    throw new Error("Another customer with this name already exists.");
+  }
 
   await db.execute(
     `UPDATE customers 
      SET name = $1, address_line1 = $2, address_line2 = $3, gstin = $4, phone_number = $5
      WHERE customer_id = $6`,
-    [name, address_line1 || null, address_line2 || null, gstin || null, phone || null, id]
+    [name, address_line1 || null, address_line2 || null, gstin, phone, id]
   );
   return { message: "Customer updated successfully!" };
 };
@@ -95,41 +228,36 @@ export const getTopCustomers = async (limit = 5) => {
 // ================= INVOICES ================= //
 
 export const createInvoice = async (data) => {
-  const db = await getDB();
-  const { ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, discount, items, customer_id } = data;
+  const { ship_to, bill_no, date, items } = data;
 
-  if (!ship_to || ship_to.trim() === "") throw new Error("Customer Name is required");
-
-  const result = await db.execute(
-    `INSERT INTO invoices (ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, discount, customer_id, invoice_status, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'Due', CURRENT_TIMESTAMP)`,
-    [
-      ship_to || "",
-      /^\d+(\.\d+)?$/.test(String(bill_no || "")) ? String(parseInt(bill_no, 10)) : String(bill_no || ""),
-      date || null,
-      terms_of_payment || "30 Days",
-      state || "State",
-      Number(total_quantity) || 0,
-      Number(sub_total) || 0,
-      Number(cgst) || 0,
-      Number(sgst) || 0,
-      Number(igst) || 0,
-      Number(grand_total) || 0,
-      Number(discount) || 0,
-      customer_id || null,
-    ]
-  );
-  const invoiceId = result.lastInsertId;
-
-  if (items && items.length > 0) {
-    for (let item of items) {
-      await db.execute(
-        `INSERT INTO items (invoice_id, item_name, hsn, quantity, price, total) VALUES ($1, $2, $3, $4, $5, $6)`,
-        [invoiceId, item.item_name || item.name, item.hsn, item.quantity || item.qty, item.price || item.rate, item.total || item.amount]
-      );
-    }
+  if (!ship_to || ship_to.trim() === "") {
+    throw new Error("Customer Name is required");
   }
-  return { message: "Invoice saved successfully!", invoiceId };
+
+  const normalizedBillNo = buildFinalBillNo(bill_no, date);
+  if (!normalizedBillNo) {
+    throw new Error("Bill number is required");
+  }
+
+  return withTransaction(async (db) => {
+    await assertBillNoAvailable(db, normalizedBillNo);
+
+    const result = await db.execute(
+      `INSERT INTO invoices (ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, discount, customer_id, invoice_status, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'Due', CURRENT_TIMESTAMP)`,
+      invoiceInsertParams(data, normalizedBillNo)
+    );
+
+    const invoiceId = result.lastInsertId;
+    try {
+      await insertInvoiceItems(db, invoiceId, items);
+    } catch (error) {
+      await db.execute(`DELETE FROM invoices WHERE invoice_id = $1`, [invoiceId]);
+      throw error;
+    }
+
+    return { message: "Invoice saved successfully!", invoiceId };
+  });
 };
 
 export const getInvoiceById = async (id) => {
@@ -143,38 +271,38 @@ export const getInvoiceById = async (id) => {
 
 // Helper to refresh "Due" statuses to "Overdue" automatically
 export const refreshInvoiceStatuses = async () => {
-  const db = await getDB();
-  const dueInvoices = await db.select(
-    `SELECT invoice_id, date, terms_of_payment FROM invoices WHERE invoice_status = 'Due'`
-  );
+  return withTransaction(async (db) => {
+    const dueInvoices = await db.select(
+      `SELECT invoice_id, date, terms_of_payment FROM invoices WHERE invoice_status = 'Due'`
+    );
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  for (const inv of dueInvoices) {
-    if (!inv.date) continue;
+    for (const inv of dueInvoices) {
+      if (!inv.date) continue;
 
-    // Default to 0 days if no numeric days are found
-    let days = 30; // Default
-    const match = inv.terms_of_payment?.match(/(\d+)/);
-    if (match) {
-      days = parseInt(match[0], 10);
-    } else if (inv.terms_of_payment?.toLowerCase().includes("immediate")) {
-      days = 0;
+      let days = 30;
+      const match = inv.terms_of_payment?.match(/(\d+)/);
+      if (match) {
+        days = parseInt(match[0], 10);
+      } else if (inv.terms_of_payment?.toLowerCase().includes("immediate")) {
+        days = 0;
+      }
+
+      const billDate = new Date(inv.date);
+      const dueDate = new Date(billDate);
+      dueDate.setDate(billDate.getDate() + days);
+      dueDate.setHours(0, 0, 0, 0);
+
+      if (today > dueDate) {
+        await db.execute(
+          `UPDATE invoices SET invoice_status = 'Overdue' WHERE invoice_id = $1`,
+          [inv.invoice_id]
+        );
+      }
     }
-
-    const billDate = new Date(inv.date);
-    const dueDate = new Date(billDate);
-    dueDate.setDate(billDate.getDate() + days);
-    dueDate.setHours(0, 0, 0, 0);
-
-    if (today > dueDate) {
-      await db.execute(
-        `UPDATE invoices SET invoice_status = 'Overdue' WHERE invoice_id = $1`,
-        [inv.invoice_id]
-      );
-    }
-  }
+  });
 };
 
 export const getAllInvoices = async () => {
@@ -213,48 +341,58 @@ export const getRecentInvoices = async (limit = 5) => {
 };
 
 export const updateInvoice = async (id, data) => {
-  const db = await getDB();
-  const { ship_to, bill_no, date, terms_of_payment, state, total_quantity, sub_total, cgst, sgst, igst, grand_total, discount, items, customer_id } = data;
-
-  await db.execute(
-    `UPDATE invoices
-     SET ship_to = $1, bill_no = $2, date = $3, terms_of_payment = $4, state = $5, total_quantity = $6, sub_total = $7, cgst = $8, sgst = $9, igst = $10, grand_total = $11, discount = $12, customer_id = $13
-     WHERE invoice_id = $14`,
-    [
-      ship_to || "",
-      String(bill_no || ""),
-      date || null,
-      terms_of_payment || "30 Days",
-      state || "State",
-      Number(total_quantity) || 0,
-      Number(sub_total) || 0,
-      Number(cgst) || 0,
-      Number(sgst) || 0,
-      Number(igst) || 0,
-      Number(grand_total) || 0,
-      Number(discount) || 0,
-      customer_id || null,
-      id,
-    ]
-  );
-
-  await db.execute(`DELETE FROM items WHERE invoice_id = $1`, [id]);
-
-  if (items && items.length > 0) {
-    for (let item of items) {
-      await db.execute(
-        `INSERT INTO items (invoice_id, item_name, hsn, quantity, price, total) VALUES ($1, $2, $3, $4, $5, $6)`,
-        [id, item.item_name || item.name, item.hsn, item.quantity || item.qty, item.price || item.rate, item.total || item.amount]
-      );
-    }
+  const { bill_no, date, items } = data;
+  const normalizedBillNo = buildFinalBillNo(bill_no, date);
+  if (!normalizedBillNo) {
+    throw new Error("Bill number is required");
   }
-  return { message: "Invoice updated successfully!" };
+
+  return withTransaction(async (db) => {
+    await assertBillNoAvailable(db, normalizedBillNo, id);
+
+    const previousItems = await db.select(
+      `SELECT item_name, hsn, quantity, price, total FROM items WHERE invoice_id = $1`,
+      [id]
+    );
+
+    await db.execute(
+      `UPDATE invoices
+       SET ship_to = $1, bill_no = $2, date = $3, terms_of_payment = $4, state = $5, total_quantity = $6, sub_total = $7, cgst = $8, sgst = $9, igst = $10, grand_total = $11, discount = $12, customer_id = $13
+       WHERE invoice_id = $14`,
+      [...invoiceInsertParams(data, normalizedBillNo), id]
+    );
+
+    await db.execute(`DELETE FROM items WHERE invoice_id = $1`, [id]);
+
+    try {
+      await insertInvoiceItems(db, id, items);
+    } catch (error) {
+      for (const item of previousItems) {
+        await db.execute(
+          `INSERT INTO items (invoice_id, item_name, hsn, quantity, price, total) VALUES ($1, $2, $3, $4, $5, $6)`,
+          [id, item.item_name, item.hsn, item.quantity, item.price, item.total]
+        );
+      }
+      throw error;
+    }
+
+    return { message: "Invoice updated successfully!", invoiceId: id };
+  });
 };
 
-export const checkInvoice = async (billNo) => {
+export const checkInvoice = async (billNo, date = new Date(), excludeInvoiceId = null) => {
   const db = await getDB();
-  const invoices = await db.select(`SELECT * FROM invoices WHERE bill_no = $1`, [billNo]);
-  return { exists: invoices.length > 0 };
+  const normalizedBillNo = buildFinalBillNo(billNo, date);
+  if (!normalizedBillNo) return { exists: false };
+
+  const rows = excludeInvoiceId
+    ? await db.select(
+        `SELECT invoice_id FROM invoices WHERE bill_no = $1 AND invoice_id != $2`,
+        [normalizedBillNo, excludeInvoiceId]
+      )
+    : await db.select(`SELECT invoice_id FROM invoices WHERE bill_no = $1`, [normalizedBillNo]);
+
+  return { exists: rows.length > 0 };
 };
 
 export const getNextBillNo = async () => {
@@ -280,21 +418,21 @@ export const getNextBillNo = async () => {
 };
 
 export const deleteInvoice = async (id) => {
-  const db = await getDB();
-  // Manual fallback: Delete items first to avoid foreign key constraint errors
-  // even if the table was initialized without ON DELETE CASCADE.
-  await db.execute(`DELETE FROM items WHERE invoice_id = $1`, [id]);
-  await db.execute(`DELETE FROM invoices WHERE invoice_id = $1`, [id]);
-  return { message: "Invoice deleted successfully!" };
+  return withTransaction(async (db) => {
+    await db.execute(`DELETE FROM items WHERE invoice_id = $1`, [id]);
+    await db.execute(`DELETE FROM invoices WHERE invoice_id = $1`, [id]);
+    return { message: "Invoice deleted successfully!" };
+  });
 };
 
 export const deleteInvoicesBulk = async (ids) => {
-  const db = await getDB();
-  for (const id of ids) {
-    await db.execute(`DELETE FROM items WHERE invoice_id = $1`, [id]);
-    await db.execute(`DELETE FROM invoices WHERE invoice_id = $1`, [id]);
-  }
-  return { message: `${ids.length} invoices deleted successfully!` };
+  return withTransaction(async (db) => {
+    for (const id of ids) {
+      await db.execute(`DELETE FROM items WHERE invoice_id = $1`, [id]);
+      await db.execute(`DELETE FROM invoices WHERE invoice_id = $1`, [id]);
+    }
+    return { message: `${ids.length} invoices deleted successfully!` };
+  });
 };
 
 // ================= STATS ================= //
